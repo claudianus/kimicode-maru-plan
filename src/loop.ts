@@ -63,13 +63,8 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         bestPlan = plan;
       }
 
-      if (verdict.score >= 0.85) {
-        console.log(`\n✅ Plan accepted at generation ${i} (score ${verdict.score.toFixed(2)})!`);
-        printPlan(plan);
-        return plan;
-      }
-
-      if (options.stopOnPass !== false && verdict.passed) {
+      const passed = options.stopOnPass !== false ? verdict.passed : verdict.score >= 0.85;
+      if (passed) {
         console.log(`\n✅ Plan passed at generation ${i} (score ${verdict.score.toFixed(2)})!`);
         printPlan(plan);
         return plan;

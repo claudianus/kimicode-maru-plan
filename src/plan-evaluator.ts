@@ -838,14 +838,14 @@ export function evaluatePlan(plan: Plan, seed: Seed): PlanVerdict {
   // but slightly ambiguous plan is more actionable than an ambiguous plan
   // that happens to be well-aligned.
   const score =
-    ambiguity * 0.25 +
+    (1 - ambiguity) * 0.25 +
     completeness * 0.30 +
     feasibility * 0.25 +
     goalAlignment * 0.20;
 
   const passed =
     score >= PASS_SCORE &&
-    ambiguity >= PASS_PER_DIMENSION &&
+    ambiguity <= 0.4 &&
     completeness >= PASS_PER_DIMENSION &&
     feasibility >= PASS_PER_DIMENSION &&
     goalAlignment >= PASS_PER_DIMENSION;
