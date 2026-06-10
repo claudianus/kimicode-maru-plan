@@ -4,6 +4,8 @@ id: kimi-harness
 description: >
   Turn vague ideas into concrete, actionable plans through iterative
   interview, research, planning, evaluation, and refinement.
+  Features multi-persona consensus evaluation, generational memory,
+  meta-evolution of rubrics, lateral thinking, and hard quality gates.
   Replaces or enhances the default planning mode with structured
   multi-dimensional scoring and evidence-based refinement.
 triggers:
@@ -19,13 +21,22 @@ triggers:
 
 ## Overview
 
-This harness replaces ad-hoc planning with a **structured, evidence-based loop**.
+This harness replaces ad-hoc planning with a **6-phase, evidence-based loop** that exceeds Ouroboros-level quality.
 
 ```
-Plan → Evaluate → Interview → Research → Refine → Next Plan
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Phase 1: Planner        → Generate initial Plan                            │
+│  Phase 2: Multi-Persona Eval → 4 independent evaluators + consensus         │
+│  Phase 3: Hard Gates     → Non-negotiable quality checks                    │
+│  Phase 4: Interview      → AskUserQuestion for gaps                         │
+│  Phase 5: Research       → WebSearch for validation                         │
+│  Phase 6: Refiner        → Improve Plan with memory + meta-evolution        │
+│                            ↓                                                │
+│                    (Repeat until pass or max generations)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Each iteration improves the plan until it meets quality thresholds (composite score ≥ 0.85).
+Each iteration improves the plan until it meets quality thresholds (composite score ≥ 0.85, all personas ≥ 0.75, all gates pass).
 
 ## Installation
 
@@ -45,76 +56,115 @@ No manual file editing required. When this skill is active, simply **talk to Kim
 > **User:** "블로그 만들고 싶어. Astro 쓰고 싶은데 배포는 어디로 해야 할지 모르겠어."
 >
 > **Kimi Code (harness activated):**
-> 1. **Interviewer:** "기술 스택은 Astro로 확정인가요? 다크모드 필요한가요? CMS는 필요 없나요?"
-> 2. **Researcher:** (WebSearch) Astro 4.x 최신 배포 가이드 검색
-> 3. **Planner:** Plan 초안 작성
-> 4. **Evaluator:** completeness 0.6 → SEO, RSS 누락 발견
-> 5. **Refiner:** SEO 단계 추가 제안
-> 6. **Planner (2회):** 개선된 Plan
-> 7. **Evaluator (2회):** score 0.81 → passed
-> 8. **최종 Plan 제시**
+> 1. **Planner:** Plan 초안 작성 (Astro 블로그 템플릿)
+> 2. **Evaluators:**
+>    - Developer: 0.92 ✅ (구현 가능)
+>    - PM: 0.88 ✅ (목표 일치)
+>    - Security: 0.95 ✅ (제약 준수)
+>    - UX: 0.70 ❌ (다크모드 상세 부족)
+>    - Consensus: FAILED (UX < 0.75)
+> 3. **Gates:** Post-evaluation gate pass
+> 4. **Interviewer:** "다크모드 토글 방식을 구체적으로 알려주세요."
+> 5. **Researcher:** (WebSearch) Astro 다크모드 최신 패턴
+> 6. **Refiner:** UX 개선 + 메모리 기록
+> 7. **Planner (2회):** 개선된 Plan
+> 8. **Evaluators (2회):** UX 0.85 → Consensus PASSED
+> 9. **최종 Plan 제시**
 
-## The Loop (What Kimi Code Does Internally)
+## The 6 Phases (What Kimi Code Does Internally)
 
-### Step 1: Interview (Clarify)
-
-Read `src/interviewer.ts` from the installed package.
-
-Generate questions for:
-- **Goal ambiguity** — Is the goal shorter than 30 chars? Contains subjective words ("good", "nice", "better")?
-- **Missing constraints** — Budget? Timeline? Tech stack? Team size?
-- **Non-goal conflicts** — Are non-goals being violated by implied scope?
-- **Vague steps** — Any step description shorter than 10 chars?
-- **Missing effort estimates** — Are verification methods missing?
-
-Use `AskUserQuestion` for **P0/P1 priority** questions.
-
-### Step 2: Research (Validate)
-
-Read `src/researcher.ts`.
-
-For each identified research topic:
-- Search the web for current best practices (WebSearch)
-- Check official documentation
-- Verify compatibility with constraints
-- Assess source authority (official docs > blog posts)
-
-### Step 3: Plan (Synthesize)
+### Phase 1: Planner (Synthesize)
 
 Read `src/planner.ts`.
 
 Combine: **seed + interview answers + research findings** → concrete `Plan`.
 
-The planner uses rule-based templates (web, API, CLI, mobile, generic) selected by goal keywords.
+- Detect project archetype from goal keywords (web, API, CLI, mobile, generic)
+- Select base template and customize with constraints/nonGoals
+- Generate assumptions, risks, effort estimates, and verification methods
 
-### Step 4: Evaluate (Score)
+### Phase 2: Multi-Persona Evaluation (Consensus)
 
-Read `src/plan-evaluator.ts`.
+Read `src/evaluators/`.
 
-Score the plan on 4 dimensions (0 = worst, 1 = best):
+Run **4 independent evaluators** in parallel, then aggregate:
 
-| Dimension | Weight | What it measures |
-|-----------|--------|------------------|
-| **Ambiguity** | 25% | Is every term concrete and measurable? |
-| **Completeness** | 30% | Are all critical steps, verifications, and dependencies present? |
-| **Feasibility** | 25% | Can this actually be executed within constraints? |
-| **Goal Alignment** | 20% | Does every step directly serve the original goal? |
+| Persona | Weight Focus | Key Concern |
+|---------|-------------|-------------|
+| **Developer** | completeness 40%, feasibility 35% | Can this be built? Are deps realistic? |
+| **PM** | goalAlignment 40%, ambiguity 30% | Does this serve the business goal? |
+| **Security** | feasibility 40%, completeness 30% | Are constraints enforced? Any security gaps? |
+| **UX** | ambiguity 40%, goalAlignment 30% | Is this clear for end users? |
 
-**Composite score** = (1 − ambiguity) × 0.25 + completeness × 0.30 + feasibility × 0.25 + alignment × 0.20
+**Consensus rules:**
+- Consensus score = average of persona scores
+- **Hard rule:** Any persona < 0.75 → plan cannot pass
+- Disagreements (|scoreA - scoreB| > 0.3) are surfaced for resolution
 
-Pass threshold: **composite ≥ 0.85 AND ambiguity ≤ 0.4 AND completeness ≥ 0.6**
+### Phase 3: Hard Quality Gates (Non-Negotiable)
 
-### Step 5: Refine (Improve)
+Read `src/gates.ts`.
 
-Read `src/plan-refiner.ts`.
+Three gate layers that **cannot be bypassed** by evaluator scores:
 
-If score < 0.85:
-- Identify the weakest dimension
-- Generate follow-up questions (interviewQuestions)
-- Suggest research topics (researchQueries)
-- Update the plan with new steps, assumptions, or risks
+1. **Pre-Generation Gate** — Seed validation:
+   - Goal must contain noun + verb
+   - Constraints must not contradict each other
+   - Goal length < 200 chars
 
-**Repeat from Step 1** with the updated plan.
+2. **Post-Evaluation Gate** — Plan structural validation:
+   - ≥ 3 steps, ≥ 1 assumption, ≥ 1 risk
+   - No duplicate step descriptions
+   - Plan goal must match seed goal (semantic overlap > 50%)
+
+3. **Consensus Gate** — Per-persona minimum:
+   - All 4 personas must score ≥ 0.75
+
+### Phase 4: Interview (Clarify)
+
+Read `src/interviewer.ts`.
+
+Generate questions for:
+- **Goal ambiguity** — Subjective words? Too short?
+- **Missing constraints** — Budget? Timeline? Tech stack?
+- **Non-goal conflicts** — Scope creep?
+- **Vague steps** — Descriptions < 4 words?
+- **Missing effort estimates** — Verification methods absent?
+
+Use `AskUserQuestion` for **P0/P1 priority** questions.
+
+**Memory-aware:** The interviewer reads the generational memory archive to avoid repeating questions that didn't help in previous generations.
+
+### Phase 5: Research (Validate)
+
+Read `src/researcher.ts`.
+
+For each identified research topic:
+- Search the web for current best practices (`WebSearch`)
+- Check official documentation
+- Verify compatibility with constraints
+- **Warn on unknown technologies** — fictional or immature tech gets flagged
+
+### Phase 6: Refiner + Meta-Evolution (Improve)
+
+Read `src/plan-refiner.ts` and `src/meta/`.
+
+**Refinement:**
+- Identify weakest dimension from consensus
+- Generate follow-up questions and research queries
+- Update plan with new steps, assumptions, or risks
+- **Read generational memory** to avoid retrying discarded ideas
+
+**Meta-Evolution (every 3rd generation):**
+- Review last 3 generations' scores
+- Suggest rubric weight adjustments if a dimension is consistently weak or strong
+- Suggest prompt priority adjustments based on question yield
+
+**Lateral Thinking (on stagnation):**
+- If score improvement < 0.05 for 3 consecutive generations:
+  - Generate 3 radically different approaches (conservative, aggressive, lateral)
+  - Present to user via `AskUserQuestion`
+  - Record chosen strategy in memory as a pivot
 
 ## Output Format
 
