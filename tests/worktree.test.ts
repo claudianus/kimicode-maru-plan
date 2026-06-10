@@ -1,5 +1,5 @@
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
-import { mkdtempSync, writeFileSync } from 'fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
@@ -11,13 +11,15 @@ describe('worktree', () => {
   beforeEach(() => {
     repoDir = mkdtempSync(join(tmpdir(), 'kh-test-'));
     execSync('git init', { cwd: repoDir });
+    execSync('git config user.email "test@kimi-harness.local"', { cwd: repoDir });
+    execSync('git config user.name "Test"', { cwd: repoDir });
     writeFileSync(join(repoDir, 'README.md'), '# test');
     execSync('git add . && git commit -m "init"', { cwd: repoDir });
   });
 
   afterEach(() => {
     try {
-      execSync(`rm -rf "${repoDir}"`);
+      rmSync(repoDir, { recursive: true, force: true });
     } catch { /* ignore */ }
   });
 
