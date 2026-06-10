@@ -26,10 +26,12 @@ export function createWorktree(cwd: string, name: string): string {
  */
 export function removeWorktree(cwd: string, name: string): void {
   validateName(name);
+  const path = worktreePath(cwd, name);
   try {
-    const path = worktreePath(cwd, name);
     execFileSync('git', ['worktree', 'remove', path, '--force'], { cwd, encoding: 'utf-8', stdio: 'pipe' });
-  } catch {
-    // Best-effort cleanup
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[worktree] cleanup failed for ${path}:`, err);
+    }
   }
 }
