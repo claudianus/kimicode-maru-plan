@@ -2,6 +2,8 @@
 import { parseArgs } from 'util';
 import { parseSeed } from './parser.js';
 import { runLoop } from './loop.js';
+import type { Plan } from './types.js';
+import { stringify } from 'yaml';
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -39,7 +41,11 @@ if (!seedPath) {
 }
 
 const seed = parseSeed(seedPath);
-await runLoop(seed, {
+const plan: Plan = await runLoop(seed, {
   cwd: values.cwd!,
   maxGenerations: values['max-generations'] ? parseInt(values['max-generations']) : undefined,
 });
+
+const yamlOutput = stringify(plan, { sortMapEntries: true });
+await Bun.write('plan.yaml', yamlOutput);
+console.log('📄 Final plan written to plan.yaml');
