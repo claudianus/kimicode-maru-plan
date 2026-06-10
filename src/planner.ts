@@ -13,607 +13,474 @@ import type { InterviewQA, Plan, PlanStep, ResearchItem, Seed } from "./types.js
  */
 
 // ═══════════════════════════════════════════════
-// Section 1 — Goal Analysis & Ambiguity Detection
+// Section 1 — Goal Analysis & Template Selection
 // ═══════════════════════════════════════════════
 
 /**
- * Analyze the clarity of the seed goal and return an ambiguity score (0.0–1.0).
- *
- * WHY: A vague goal produces a vague plan. Kimi Code must detect ambiguity
- * early so the plan includes targeted assumptions and the evaluator can flag
- * missing interviews.
- *
- * Scoring rubric:
- * 0.0–0.2 = Crystal clear. Contains specific technology, platform, and scope.
- *   Example: "Build an Astro blog with Cloudflare Pages, MDX posts, and
- *   Tailwind styling."
- * 0.3–0.5 = Mostly clear but missing one dimension (tech, scale, or timeline).
- *   Example: "Build a React dashboard with charts." (Which chart library?
- *   Data source? Auth?)
- * 0.6–0.8 = Seriously vague. Adjectives without metrics, missing tech stack,
- *   no boundaries.
- *   Example: "Build a good website." (What is "good"? E-commerce? Blog?
- *   Static or dynamic?)
- * 0.9–1.0 = Almost empty or purely aspirational.
- *   Example: "Make something cool."
- *
- * Decision tree:
- * 1. Does the goal name a specific framework or language? → -0.3
- * 2. Does it name a specific platform or host? → -0.2
- * 3. Does it list concrete features (≥3)? → -0.2
- * 4. Does it contain subjective adjectives (good, nice, best, modern)
- *    without definitions? → +0.3
- * 5. Does it lack any boundary (no mention of what is NOT included)? → +0.2
- * 6. Is the goal longer than 20 words and still lacks specifics? → +0.1
- *
- * @param goal - The seed goal string.
- * @returns Ambiguity score between 0.0 (clear) and 1.0 (completely vague).
+ * Supported project archetypes for template selection.
  */
-function analyzeGoalAmbiguity(goal: string): number {
-  let score = 0.5;
-  const lower = goal.toLowerCase();
-
-  // Specific technology / framework reduces ambiguity.
-  const techPatterns = /\b(astro|next\.?js|react|vue|svelte|angular|django|rails|laravel|express|fastapi|flask|spring|dotnet|go|rust|python|typescript|javascript|java|kotlin|swift)\b/;
-  if (techPatterns.test(lower)) score -= 0.3;
-
-  // Platform or host reduces ambiguity.
-  const platformPatterns = /\b(vercel|netlify|cloudflare|aws|gcp|azure|firebase|supabase|github pages|docker|kubernetes)\b/;
-  if (platformPatterns.test(lower)) score -= 0.2;
-
-  // Concrete feature markers (words like "with", "supporting", "including"
-  // followed by nouns) reduce ambiguity.
-  const featureIndicators = (lower.match(/\b(with|supporting|including|using|via)\b/g) ?? []).length;
-  if (featureIndicators >= 2) score -= 0.2;
-
-  // Subjective adjectives increase ambiguity.
-  const subjectivePatterns = /\b(good|nice|best|modern|clean|awesome|great|better|user-friendly|scalable|robust)\b/;
-  if (subjectivePatterns.test(lower)) score += 0.3;
-
-  // Lack of boundary words (no "only", "not", "excluding", "limit to")
-  // increases ambiguity.
-  const boundaryPatterns = /\b(only|not|excluding|limit to|out of scope|won't|no\b)/;
-  if (!boundaryPatterns.test(lower)) score += 0.2;
-
-  // Very short goals (< 5 words) are usually vague.
-  const wordCount = goal.trim().split(/\s+/).length;
-  if (wordCount < 5) score += 0.2;
-
-  return Math.max(0.0, Math.min(1.0, score));
-}
+type ProjectType = "web" | "api" | "cli" | "mobile" | "generic";
 
 /**
- * Extract a prioritized list of deliverables from the seed, interviews,
- * and research.
- *
- * WHY: A plan is only as good as its defined outputs. If deliverables are
- * implicit, the team (or Kimi Code) will build the wrong thing.
+ * Detect the project archetype from the seed goal using keyword heuristics.
  *
  * Rules:
- * 1. Every sentence in seed.goal that starts with a verb is a candidate
- *    deliverable. ("Build X", "Integrate Y", "Migrate Z")
- * 2. Interview answers that add new verbs become additional deliverables.
- * 3. Research findings that reveal "commonly needed" items (e.g., "Auth0
- *    integration usually requires a callback handler") become deliverables
- *    UNLESS seed.nonGoals explicitly excludes them.
- * 4. Each deliverable must be a noun phrase, not a task description.
- *    BAD: "Code the login form"
- *    GOOD: "Login form with email/password validation and error states"
+ * - Web/blog keywords: "blog", "website", "web", "frontend", "landing page",
+ *   "portfolio", "site", "saas"
+ * - API/backend keywords: "api", "backend", "server", "microservice", "rest",
+ *   "graphql", "grpc"
+ * - CLI/tool keywords: "cli", "command line", "tool", "script", "utility",
+ *   "terminal"
+ * - Mobile keywords: "mobile", "ios", "android", "react native", "flutter",
+ *   "app", "pwa"
+ * - Fallback: "generic"
  *
- * @param seed - The user seed.
- * @param interviews - Completed interviews.
- * @param research - Research items.
- * @returns Ordered list of deliverables (highest priority first).
+ * @param goal - The seed goal string.
+ * @returns One of the supported project types.
  */
-function extractDeliverables(
-  seed: Seed,
-  interviews: InterviewQA[],
-  research: ResearchItem[],
-): string[] {
-  const deliverables: string[] = [];
-  const goalLower = seed.goal.toLowerCase();
+function detectProjectType(goal: string): ProjectType {
+  const lower = goal.toLowerCase();
+  if (/\b(blog|website|web|frontend|landing page|portfolio|site|saas)\b/.test(lower)) return "web";
+  if (/\b(api|backend|server|microservice|rest|graphql|grpc)\b/.test(lower)) return "api";
+  if (/\b(cli|command.?line|tool|script|utility|terminal)\b/.test(lower)) return "cli";
+  if (/\b(mobile|ios|android|react native|flutter|app|pwa)\b/.test(lower)) return "mobile";
+  return "generic";
+}
 
-  // ── Rule 1: Parse goal for verb-led clauses ──
-  const verbClauses = seed.goal.match(/\b(Build|Create|Implement|Integrate|Migrate|Refactor|Add|Set up|Configure|Deploy)\s+([^,.]+)/gi);
-  if (verbClauses) {
-    for (const clause of verbClauses) {
-      const cleaned = clause.replace(/\b(Build|Create|Implement|Integrate|Migrate|Refactor|Add|Set up|Configure|Deploy)\s+/i, "").trim();
-      if (cleaned.length > 3) deliverables.push(cleaned);
-    }
+/**
+ * Build a base template of steps for a given project type.
+ *
+ * Each template follows a logical execution order:
+ * - Web/blog: init → design → implement → optimize → deploy
+ * - API/backend: spec → implement → test → deploy → monitor
+ * - CLI/tool: init → parse-args → core-logic → test → package
+ * - Mobile: init → UI → state → API → deploy
+ * - Generic: research → design → implement → test → deploy
+ *
+ * @param type - Detected project type.
+ * @returns Ordered array of partial steps (no ids or dependsOn yet).
+ */
+function getBaseTemplate(type: ProjectType): Array<Omit<PlanStep, "id" | "dependsOn">> {
+  switch (type) {
+    case "web":
+      return [
+        {
+          description: "Initialize project, tooling, and dependencies",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Dev server starts without errors; lint and type-check pass.",
+        },
+        {
+          description: "Design system, layout structure, and component hierarchy",
+          estimatedEffort: "2–4h",
+          verificationMethod: "Style guide or component catalog is documented and renders correctly.",
+        },
+        {
+          description: "Implement core pages, features, and content",
+          estimatedEffort: "4–8h",
+          verificationMethod: "All primary user flows work in dev build; no console errors.",
+        },
+        {
+          description: "Optimize performance, SEO, and accessibility",
+          estimatedEffort: "2–4h",
+          verificationMethod: "Lighthouse score meets target; manual a11y audit passes.",
+        },
+        {
+          description: "Build and deploy to production or staging",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Live URL accessible; smoke tests pass.",
+        },
+      ];
+    case "api":
+      return [
+        {
+          description: "Define API specification and data models",
+          estimatedEffort: "2–4h",
+          verificationMethod: "OpenAPI or schema document reviewed and agreed upon.",
+        },
+        {
+          description: "Implement endpoints, business logic, and persistence",
+          estimatedEffort: "4–8h",
+          verificationMethod: "All endpoints return expected responses via manual or automated tests.",
+        },
+        {
+          description: "Write unit and integration tests",
+          estimatedEffort: "2–4h",
+          verificationMethod: "Test suite passes with ≥ 80 % coverage of critical paths.",
+        },
+        {
+          description: "Configure infrastructure and deploy",
+          estimatedEffort: "1–3h",
+          verificationMethod: "Service is live and health-check endpoint returns 200.",
+        },
+        {
+          description: "Set up monitoring, logging, and alerting",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Alerts fire on simulated error; logs are queryable.",
+        },
+      ];
+    case "cli":
+      return [
+        {
+          description: "Initialize project and install dependencies",
+          estimatedEffort: "30m–1h",
+          verificationMethod: "Build succeeds and binary is generated.",
+        },
+        {
+          description: "Implement CLI argument parsing and help text",
+          estimatedEffort: "1–2h",
+          verificationMethod: "--help output is accurate; unknown flags produce errors.",
+        },
+        {
+          description: "Implement core logic and functionality",
+          estimatedEffort: "3–6h",
+          verificationMethod: "All documented commands produce correct output for sample inputs.",
+        },
+        {
+          description: "Write unit tests and edge-case coverage",
+          estimatedEffort: "2–3h",
+          verificationMethod: "Test suite passes; edge cases (empty input, large files) handled.",
+        },
+        {
+          description: "Package and publish or distribute",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Installation from registry or binary download works on target platforms.",
+        },
+      ];
+    case "mobile":
+      return [
+        {
+          description: "Initialize mobile project and dependencies",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Simulator or emulator launches app without crashes.",
+        },
+        {
+          description: "Build UI screens, components, and navigation",
+          estimatedEffort: "4–8h",
+          verificationMethod: "All screens render correctly; navigation flows match design.",
+        },
+        {
+          description: "Implement state management and local data layer",
+          estimatedEffort: "3–5h",
+          verificationMethod: "State persists across screen changes; offline mode works where applicable.",
+        },
+        {
+          description: "Integrate backend APIs and handle errors",
+          estimatedEffort: "3–5h",
+          verificationMethod: "API calls succeed; error states (network, 401, 500) are handled visibly.",
+        },
+        {
+          description: "Build and deploy to store or device",
+          estimatedEffort: "2–4h",
+          verificationMethod: "Release build succeeds; app installs and runs on physical device.",
+        },
+      ];
+    case "generic":
+    default:
+      return [
+        {
+          description: "Research technologies, approaches, and constraints",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Decision record documents chosen stack and rejected alternatives.",
+        },
+        {
+          description: "Design architecture, data model, and user experience",
+          estimatedEffort: "2–4h",
+          verificationMethod: "Diagrams or documents reviewed; acceptance criteria defined.",
+        },
+        {
+          description: "Implement core functionality",
+          estimatedEffort: "4–8h",
+          verificationMethod: "Primary use cases work end-to-end in dev environment.",
+        },
+        {
+          description: "Test, validate, and fix issues",
+          estimatedEffort: "2–4h",
+          verificationMethod: "All known bugs resolved; QA checklist passes.",
+        },
+        {
+          description: "Deploy, release, and document",
+          estimatedEffort: "1–2h",
+          verificationMethod: "Users can access or install the deliverable; README is complete.",
+        },
+      ];
   }
-
-  // If no verb clauses found, treat the entire goal as a single deliverable.
-  if (deliverables.length === 0) {
-    deliverables.push(seed.goal);
-  }
-
-  // ── Rule 2: Mine interview answers for new deliverables ──
-  for (const qa of interviews) {
-    if (!qa.answer) continue;
-    const answerLower = qa.answer.toLowerCase();
-    // Skip if answer just confirms existing deliverable.
-    if (deliverables.some((d) => answerLower.includes(d.toLowerCase()))) continue;
-
-    // Extract noun phrases that look like new features or artifacts.
-    const newItems = qa.answer.match(/\b(?:we need|add|also|plus|include|require)\s+([^,.]+)/gi);
-    if (newItems) {
-      for (const item of newItems) {
-        const cleaned = item.replace(/\b(?:we need|add|also|plus|include|require)\s+/i, "").trim();
-        if (cleaned.length > 3 && !deliverables.includes(cleaned)) {
-          deliverables.push(cleaned);
-        }
-      }
-    }
-  }
-
-  // ── Rule 3: Enrich with research, respecting nonGoals ──
-  const nonGoalsLower = (seed.nonGoals ?? []).map((ng) => ng.toLowerCase());
-  for (const ri of research) {
-    // Simple heuristic: if research summary contains "usually requires",
-    // "typically needs", or "common pattern", treat the following noun
-    // phrase as a candidate deliverable.
-    const patterns = ri.summary.match(/\b(?:usually requires|typically needs|common pattern|standard practice|best practice)\s+([^,.]+)/gi);
-    if (patterns) {
-      for (const p of patterns) {
-        const cleaned = p.replace(/\b(?:usually requires|typically needs|common pattern|standard practice|best practice)\s+/i, "").trim();
-        const cleanedLower = cleaned.toLowerCase();
-        if (
-          cleaned.length > 3 &&
-          !deliverables.some((d) => d.toLowerCase() === cleanedLower) &&
-          !nonGoalsLower.some((ng) => cleanedLower.includes(ng) || ng.includes(cleanedLower))
-        ) {
-          deliverables.push(cleaned);
-        }
-      }
-    }
-  }
-
-  return deliverables;
 }
 
 // ═══════════════════════════════════════════════
-// Section 2 — Assumption & Risk Identification
+// Section 2 — Template Customization
 // ═══════════════════════════════════════════════
 
 /**
- * Generate a list of assumptions the plan must make when information is
- * missing or ambiguous.
+ * Customize template steps using seed constraints, nonGoals, interviews, and
+ * research.
  *
- * WHY: Explicit assumptions prevent silent misalignment. If an assumption
- * turns out to be false, the plan can be refined instead of rewritten.
+ * Customization rules:
+ * 1. Inject seed.constraints into the first step so they are visible early.
+ * 2. Remove any step whose description matches a seed.nonGoals keyword
+ *    (e.g., nonGoal "CMS integration" removes a step mentioning "CMS").
+ * 3. Add steps for new needs surfaced in interview answers.
+ * 4. Add steps for best practices or common requirements found in research.
  *
- * Decision tree:
- * 1. Is there NO interview covering deployment target?
- *    → Assume: "Deployment target is the developer's local machine or
- *       the most common free tier (Vercel for frontend, Render for backend)."
- * 2. Is there NO interview covering authentication?
- *    → Assume: "No authentication is required unless the goal explicitly
- *       mentions users, accounts, or admin panels."
- * 3. Is there NO research on the chosen framework's latest version?
- *    → Assume: "Latest stable major version is used."
- * 4. Does the goal mention "API" without specifying REST vs GraphQL vs gRPC?
- *    → Assume: "REST with JSON over HTTP."
- * 5. Is there no mention of testing?
- *    → Assume: "Manual verification is sufficient for the initial plan;
- *       automated tests will be added if scope allows."
- * 6. Is there no mention of styling approach?
- *    → Assume: "Tailwind CSS if the stack is modern JS; otherwise no
- *       strong opinion."
- * 7. Are seed.constraints empty?
- *    → Assume: "No hard deadlines or budget limits exist."
+ * @param steps - Base template steps (already have ids).
+ * @param seed - The user seed.
+ * @param interviews - Completed interviews.
+ * @param research - Research items.
+ * @returns Customized steps array.
+ */
+function customizeSteps(
+  steps: PlanStep[],
+  seed: Seed,
+  interviews: InterviewQA[],
+  research: ResearchItem[],
+): PlanStep[] {
+  const customized = steps.map((s) => ({ ...s }));
+  const nonGoalsLower = (seed.nonGoals ?? []).map((ng) => ng.toLowerCase());
+
+  // Rule 1: Inject constraints into the first step.
+  if (customized.length > 0 && seed.constraints.length > 0) {
+    const first = customized[0];
+    if (first) {
+      const constraintList = seed.constraints.join("; ");
+      first.description += ` (constraints: ${constraintList})`;
+    }
+  }
+
+  // Rule 2: Filter out steps that match nonGoals.
+  const filtered = customized.filter((step) => {
+    const stepLower = step.description.toLowerCase();
+    return !nonGoalsLower.some((ng) => {
+      const keywords = ng.split(/\s+/).filter((w) => w.length > 3);
+      return keywords.some((kw) => stepLower.includes(kw.toLowerCase()));
+    });
+  });
+
+  // Rule 3: Add interview-driven steps for unmet needs.
+  for (const qa of interviews) {
+    if (!qa.answer) continue;
+    const existingDescriptions = filtered.map((s) => s.description.toLowerCase());
+
+    const newReqMatch = qa.answer.match(/\b(?:also need|additionally|should also|we also|need to|require)\s+([^,.]+)/i);
+    if (newReqMatch && newReqMatch[1]) {
+      const feature = newReqMatch[1].trim();
+      const featureLower = feature.toLowerCase();
+      const isDuplicate = existingDescriptions.some((d) =>
+        d.includes(featureLower.substring(0, Math.min(20, featureLower.length)))
+      );
+      if (!isDuplicate) {
+        filtered.push({
+          id: `interview-${qa.id}`,
+          description: `Address interview need: ${feature}`,
+          estimatedEffort: "1–3h",
+          verificationMethod: `Requirement from interview "${qa.question}" is satisfied and verified.`,
+        });
+      }
+    }
+  }
+
+  // Rule 4: Add research-driven steps for commonly needed items.
+  for (const ri of research) {
+    const existingDescriptions = filtered.map((s) => s.description.toLowerCase());
+    const commonMatch = ri.summary.match(
+      /\b(?:commonly needs|typically requires|usually requires|best practice is|standard pattern is)\s+([^,.]+)/i,
+    );
+    if (commonMatch && commonMatch[1]) {
+      const item = commonMatch[1].trim();
+      const itemLower = item.toLowerCase();
+      const isDuplicate = existingDescriptions.some((d) =>
+        d.includes(itemLower.substring(0, Math.min(20, itemLower.length)))
+      );
+      if (!isDuplicate) {
+        filtered.push({
+          id: `research-${ri.id}`,
+          description: `Incorporate research finding: ${item}`,
+          estimatedEffort: "1–2h",
+          verificationMethod: `Findings from "${ri.query}" are implemented and validated.`,
+        });
+      }
+    }
+  }
+
+  return filtered.length > 0 ? filtered : customized;
+}
+
+// ═══════════════════════════════════════════════
+// Section 3 — DAG Construction
+// ═══════════════════════════════════════════════
+
+/**
+ * Assign sequential dependencies to form a valid DAG.
+ *
+ * Every step after the first depends on its immediate predecessor. This
+ * guarantees acyclicity and produces a simple, easy-to-follow execution order.
+ *
+ * @param steps - Steps to link (must already have ids).
+ */
+function assignDependsOn(steps: PlanStep[]): void {
+  for (let i = 1; i < steps.length; i++) {
+    const prev = steps[i - 1];
+    const curr = steps[i];
+    if (prev && curr) {
+      curr.dependsOn = [prev.id];
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Section 4 — Assumption & Risk Identification
+// ═══════════════════════════════════════════════
+
+/**
+ * Generate relevant assumptions based on seed context.
+ *
+ * Produces at least 3 assumptions covering:
+ * - Tech stack and constraints compatibility
+ * - Authentication requirements (if any)
+ * - Deployment target suitability
+ * - Testing approach
+ * - Scale expectations
  *
  * @param seed - The user seed.
  * @param interviews - Completed interviews.
  * @param research - Research items.
- * @returns Array of explicit assumption strings.
+ * @returns Array of assumption strings (minimum 3).
  */
-function identifyAssumptions(
-  seed: Seed,
-  interviews: InterviewQA[],
-  research: ResearchItem[],
-): string[] {
+function generateAssumptions(seed: Seed, interviews: InterviewQA[], research: ResearchItem[]): string[] {
   const assumptions: string[] = [];
   const goalLower = seed.goal.toLowerCase();
-  const hasInterviewTopic = (topic: string): boolean =>
-    interviews.some((qa) => qa.question.toLowerCase().includes(topic) || (qa.answer?.toLowerCase().includes(topic) ?? false));
-  const hasResearchTopic = (topic: string): boolean =>
-    research.some((ri) => ri.query.toLowerCase().includes(topic) || ri.summary.toLowerCase().includes(topic));
 
-  // Assumption 1: Deployment target.
-  if (!hasInterviewTopic("deploy") && !hasResearchTopic("deploy") && !hasInterviewTopic("host")) {
-    if (goalLower.includes("website") || goalLower.includes("frontend") || goalLower.includes("app")) {
-      assumptions.push("Deployment target is a static host (Vercel/Netlify/Cloudflare Pages) unless the stack requires a server.");
-    } else {
-      assumptions.push("Deployment environment is the developer's local machine or a free-tier PaaS (Render/Railway).");
-    }
+  const hasInterviewTopic = (topic: string): boolean =>
+    interviews.some(
+      (qa) =>
+        qa.question.toLowerCase().includes(topic) ||
+        (qa.answer?.toLowerCase().includes(topic) ?? false),
+    );
+  const hasResearchTopic = (topic: string): boolean =>
+    research.some(
+      (ri) => ri.query.toLowerCase().includes(topic) || ri.summary.toLowerCase().includes(topic),
+    );
+
+  // Assumption 1: Stack compatibility.
+  if (seed.constraints.length > 0) {
+    assumptions.push(
+      `The chosen stack (${seed.constraints.join(", ")}) is compatible with the deployment target and team expertise.`,
+    );
+  } else {
+    assumptions.push("No specific tech stack is mandated; the plan assumes widely adopted, stable technologies.");
   }
 
   // Assumption 2: Authentication.
-  if (!hasInterviewTopic("auth") && !hasInterviewTopic("login") && !hasInterviewTopic("user")) {
-    if (goalLower.includes("dashboard") || goalLower.includes("admin") || goalLower.includes("account")) {
-      assumptions.push("Authentication is required but method is unspecified; plan assumes email/password or OAuth 2.0 via a provider like Auth0/Clerk.");
-    } else {
-      assumptions.push("No authentication or user management is required unless discovered during implementation.");
+  if (
+    goalLower.includes("user") ||
+    goalLower.includes("account") ||
+    goalLower.includes("dashboard") ||
+    goalLower.includes("admin")
+  ) {
+    if (!hasInterviewTopic("auth") && !hasInterviewTopic("login")) {
+      assumptions.push(
+        "Authentication and authorization requirements will be clarified before implementation; plan assumes standard OAuth or email/password.",
+      );
     }
-  }
-
-  // Assumption 3: Framework version.
-  if (!hasResearchTopic("version") && !hasResearchTopic("latest")) {
-    assumptions.push("Latest stable major version of any chosen framework or library is used.");
-  }
-
-  // Assumption 4: API style.
-  if (goalLower.includes("api") && !hasInterviewTopic("rest") && !hasInterviewTopic("graphql") && !hasInterviewTopic("grpc")) {
-    assumptions.push("API style is REST with JSON over HTTP unless a specific protocol is identified.");
-  }
-
-  // Assumption 5: Testing.
-  if (!hasInterviewTopic("test") && !hasInterviewTopic("testing")) {
-    assumptions.push("Manual verification is the default acceptance method; automated testing is a stretch goal.");
-  }
-
-  // Assumption 6: Styling.
-  if (!hasInterviewTopic("style") && !hasInterviewTopic("css") && !hasInterviewTopic("tailwind") && !hasInterviewTopic("design")) {
-    if (goalLower.includes("react") || goalLower.includes("vue") || goalLower.includes("svelte") || goalLower.includes("astro")) {
-      assumptions.push("Styling uses Tailwind CSS or the framework's recommended CSS solution.");
-    }
-  }
-
-  // Assumption 7: Constraints / timeline.
-  if (seed.constraints.length === 0) {
-    assumptions.push("No hard deadlines or budget constraints are enforced.");
   } else {
-    // If constraints exist, assume they are immutable.
-    assumptions.push(`Hard constraints (${seed.constraints.join("; ")}) are immutable and take precedence over all optimizations.`);
+    assumptions.push("No user authentication is required unless explicitly mentioned in later interviews.");
+  }
+
+  // Assumption 3: Deployment target.
+  if (!hasInterviewTopic("deploy") && !hasInterviewTopic("host") && !hasResearchTopic("deploy")) {
+    assumptions.push("Deployment target supports the chosen stack without proprietary lock-in.");
+  }
+
+  // Assumption 4: Testing approach.
+  if (!hasInterviewTopic("test") && !hasInterviewTopic("testing")) {
+    assumptions.push("Manual verification is sufficient for initial delivery; automated tests are a stretch goal.");
+  }
+
+  // Assumption 5: Scale expectations.
+  if (!goalLower.includes("scale") && !goalLower.includes("million") && !goalLower.includes("high traffic")) {
+    assumptions.push("Traffic and data volume are modest; horizontal scaling is out of scope for the initial plan.");
   }
 
   return assumptions;
 }
 
 /**
- * Identify risks that could derail the plan, along with mitigations.
+ * Generate relevant risks based on constraints and nonGoals.
  *
- * WHY: Plans fail because risks are invisible until they happen. Surfacing
- * them in the initial plan lets the evaluator check feasibility realistically.
- *
- * Risk categories and thresholds:
- * - TECHNICAL: New technology for the team, undocumented APIs, alpha/beta
- *   dependencies.
- *   Trigger: Goal contains "latest", "beta", "experimental", "custom",
- *   or research reveals recent breaking changes.
- * - SCHEDULE: Estimates based on pure guesswork because no similar past
- *   project exists.
- *   Trigger: < 2 research items and < 1 interview with effort estimate.
- * - DEPENDENCY: External service (API, SaaS, library) required but not
- *   provisioned or rate-limited.
- *   Trigger: Goal contains "integrate with", "using X API", "sync with".
- * - SCOPE CREEP: Vague boundaries allow endless additions.
- *   Trigger: Ambiguity score ≥ 0.6 or nonGoals is undefined/empty.
- * - KNOWLEDGE GAP: Team lacks domain expertise.
- *   Trigger: Research items contain phrases like "complex", "steep learning
- *   curve", "requires deep understanding".
+ * Produces at least 2 risks covering:
+ * - Constraint rigidity limiting options
+ * - Scope creep from vague or missing boundaries
+ * - External integration fragility
+ * - Timeline uncertainty
+ * - Research-flagged instability
  *
  * @param seed - The user seed.
  * @param interviews - Completed interviews.
  * @param research - Research items.
- * @returns Array of risk strings, each including a brief mitigation.
+ * @returns Array of risk strings (minimum 2).
  */
-function identifyRisks(
-  seed: Seed,
-  interviews: InterviewQA[],
-  research: ResearchItem[],
-): string[] {
+function generateRisks(seed: Seed, interviews: InterviewQA[], research: ResearchItem[]): string[] {
   const risks: string[] = [];
   const goalLower = seed.goal.toLowerCase();
-  const ambiguity = analyzeGoalAmbiguity(seed.goal);
 
-  // ── TECHNICAL ──
-  if (/\b(latest|beta|experimental|alpha|custom|hand-rolled|from scratch)\b/.test(goalLower)) {
-    risks.push("TECHNICAL — Goal relies on bleeding-edge or custom technology. Mitigation: pin versions, create a spike/prototype step before full implementation.");
-  }
-  for (const ri of research) {
-    if (/\b(breaking change|deprecated|unstable|buggy|alpha|beta)\b/i.test(ri.summary)) {
-      risks.push(`TECHNICAL — Research on "${ri.query}" flagged instability. Mitigation: downgrade to stable LTS or isolate behind an abstraction layer.`);
-      break; // One technical risk is enough; avoid spam.
+  // Risk 1: Constraint-related.
+  if (seed.constraints.length > 0) {
+    const strict = seed.constraints.filter(
+      (c) => c.toLowerCase().includes("must") || c.toLowerCase().includes("only"),
+    );
+    if (strict.length > 0) {
+      risks.push(
+        `Strict constraints (${strict.join("; ")}) may limit library choices or hosting options. Mitigation: validate constraint compatibility in the first step.`,
+      );
+    } else {
+      risks.push(
+        `Constraints (${seed.constraints.join("; ")}) could conflict with optimal solutions. Mitigation: document trade-offs early.`,
+      );
     }
   }
 
-  // ── SCHEDULE ──
-  const hasEffortEstimate = interviews.some(
-    (qa) => qa.answer && /\b(hour|day|week|month|point|story point)\b/i.test(qa.answer),
+  // Risk 2: Scope creep.
+  if (!seed.nonGoals || seed.nonGoals.length === 0) {
+    risks.push(
+      "Missing nonGoals increases scope creep risk. Mitigation: define at least 3 out-of-scope items before implementation starts.",
+    );
+  } else {
+    risks.push(
+      "Explicit nonGoals are defined, but team must vigilantly reject additions that fall outside them. Mitigation: gate new requirements through a review step.",
+    );
+  }
+
+  // Risk 3: External integration fragility.
+  if (
+    goalLower.includes("integrate") ||
+    goalLower.includes("api") ||
+    goalLower.includes("third-party") ||
+    goalLower.includes("external")
+  ) {
+    risks.push(
+      "External API or service integration may fail due to rate limits, breaking changes, or auth complexity. Mitigation: mock integrations during development; test against real service early.",
+    );
+  }
+
+  // Risk 4: Timeline uncertainty.
+  const hasEstimate = interviews.some(
+    (qa) => qa.answer && /\b(hour|day|week|month)\b/i.test(qa.answer),
   );
-  if (research.length < 2 && !hasEffortEstimate) {
-    risks.push("SCHEDULE — Estimates are based on guesswork due to insufficient research/interviews. Mitigation: add a research spike as Step 1; do not commit to hard deadlines.");
+  if (!hasEstimate) {
+    risks.push(
+      "No effort estimates were provided by the user. Mitigation: treat initial estimates as guesses and re-evaluate after the first milestone.",
+    );
   }
 
-  // ── DEPENDENCY ──
-  if (/\b(integrate with|using .* API|sync with|connect to|webhook|third-party)\b/i.test(seed.goal)) {
-    risks.push("DEPENDENCY — External service integration required. Mitigation: verify API credentials/rate limits early; mock the service for local development.");
-  }
-
-  // ── SCOPE CREEP ──
-  if (ambiguity >= 0.6 || !(seed.nonGoals && seed.nonGoals.length > 0)) {
-    risks.push("SCOPE CREEP — Vague boundaries or missing nonGoals. Mitigation: define a hard cutoff milestone (e.g., 'v1 ships without feature X'); update nonGoals explicitly.");
-  }
-
-  // ── KNOWLEDGE GAP ──
+  // Risk 5: Research-flagged instability.
   for (const ri of research) {
-    if (/\b(complex|steep learning curve|requires deep understanding|difficult to master|not beginner-friendly)\b/i.test(ri.summary)) {
-      risks.push(`KNOWLEDGE GAP — "${ri.query}" flagged as complex. Mitigation: allocate explicit learning/documentation time in early steps.`);
+    if (/\b(breaking change|deprecated|unstable|buggy|alpha|beta|limited support)\b/i.test(ri.summary)) {
+      risks.push(
+        `Research on "${ri.query}" flagged potential instability. Mitigation: downgrade to stable LTS or isolate behind an abstraction layer.`,
+      );
       break;
     }
   }
 
   return risks;
-}
-
-// ═══════════════════════════════════════════════
-// Section 3 — Step Synthesis
-// ═══════════════════════════════════════════════
-
-/**
- * Synthesize an ordered list of PlanSteps from deliverables, considering
- * dependencies, effort, and verification.
- *
- * WHY: Steps are the executable core of the plan. They must be
- * - Atomic: one deliverable per step (no "and" in description).
- * - Ordered: dependencies form a DAG (no cycles).
- * - Verifiable: each step has a concrete "done" criterion.
- * - Estimated: rough effort prevents schedule fantasy.
- *
- * Synthesis checklist (applied to every deliverable):
- * 1. Is this deliverable purely investigative?
- *    → Create a "Research spike: <topic>" step. Effort: "1–2h".
- *      Verification: "Document findings in /docs/spike-<topic>.md".
- * 2. Is this deliverable infrastructure/setup?
- *    → Create a "Bootstrap: <setup>" step. Effort: "30m–2h".
- *      Verification: "Repository initializes, dev server starts, CI passes."
- * 3. Is this deliverable a user-facing feature?
- *    → Split into: (a) scaffold/data model, (b) UI/logic, (c) integration.
- *      Effort: "2h–1 day" per sub-step.
- *      Verification: "Feature is visible in preview build and passes manual
- *      acceptance criteria."
- * 4. Is this deliverable a migration or refactor?
- *    → Prepend "Backup / snapshot current state". Effort: "30m".
- *      Verification: "Rollback command tested successfully."
- *
- * Dependency rules (hard edges in the DAG):
- * - Bootstrap always comes first.
- * - Research spikes precede any step that depends on their findings.
- * - Data models precede UI/logic that consumes them.
- * - UI/logic precedes integration / deployment.
- * - Deployment is always last (or second-to-last if followed by docs).
- *
- * @param deliverables - Ordered list from extractDeliverables.
- * @returns PlanSteps with ids, dependencies, effort, and verification.
- */
-function synthesizeSteps(deliverables: string[]): PlanStep[] {
-  const steps: PlanStep[] = [];
-
-  // Helper to create a step and track its id.
-  const addStep = (
-    description: string,
-    opts: { dependsOn?: string[]; effort?: string; verification?: string } = {},
-  ): string => {
-    const id = crypto.randomUUID();
-    steps.push({
-      id,
-      description,
-      dependsOn: opts.dependsOn ?? [],
-      estimatedEffort: opts.effort ?? "1h",
-      verificationMethod: opts.verification ?? `Confirm "${description}" is complete and observable.`,
-    });
-    return id;
-  };
-
-  // ── Step 0: Bootstrap / Repository Setup ──
-  // Every plan needs a foundation. If deliverables already mention setup,
-  // we still keep this explicit to ensure a uniform start.
-  const bootstrapId = addStep("Initialize repository, tooling, and dev environment", {
-    effort: "30m–2h",
-    verification: "Repo clones cleanly, `bun install` or equivalent succeeds, dev server starts without errors.",
-  });
-
-  // Track the last "infrastructure" step for dependency chaining.
-  let lastInfraId = bootstrapId;
-
-  for (const deliverable of deliverables) {
-    const lower = deliverable.toLowerCase();
-
-    // ── Branch A: Research / Spike ──
-    if (/\b(research|investigate|compare|evaluate|spike|choose|select|decide)\b/.test(lower)) {
-      const spikeId = addStep(`Research spike: ${deliverable}`, {
-        dependsOn: [lastInfraId],
-        effort: "1–2h",
-        verification: `Findings documented in a decision record (e.g., /docs/adr-001-${slugify(deliverable)}.md). Options compared with pros/cons.`,
-      });
-      lastInfraId = spikeId;
-      continue;
-    }
-
-    // ── Branch B: Infrastructure / Config ──
-    if (/\b(setup|configure|install|deploy|host|provision|ci\/cd|pipeline|docker|kubernetes)\b/.test(lower)) {
-      const infraId = addStep(`Infrastructure: ${deliverable}`, {
-        dependsOn: [lastInfraId],
-        effort: "1–3h",
-        verification: `Configuration is applied and verified (e.g., deploy preview succeeds, container builds, CI checks pass).`,
-      });
-      lastInfraId = infraId;
-      continue;
-    }
-
-    // ── Branch C: Migration / Refactor ──
-    if (/\b(migrate|refactor|rewrite|upgrade|modernize)\b/.test(lower)) {
-      const backupId = addStep(`Snapshot current state before: ${deliverable}`, {
-        dependsOn: [lastInfraId],
-        effort: "30m",
-        verification: "Rollback command or backup branch tested; original state is recoverable in < 5 minutes.",
-      });
-      const migrateId = addStep(`Execute: ${deliverable}`, {
-        dependsOn: [backupId],
-        effort: "2h–2 days",
-        verification: `All existing tests (or manual smoke tests) pass post-migration; no data loss observed.`,
-      });
-      lastInfraId = migrateId;
-      continue;
-    }
-
-    // ── Branch D: User-facing Feature (default) ──
-    // Split into scaffold, logic, and polish when possible.
-    const scaffoldId = addStep(`Scaffold data model / types / API contract for: ${deliverable}`, {
-      dependsOn: [lastInfraId],
-      effort: "1–2h",
-      verification: `Type-check passes, mock data renders correctly in a stub page or test.`,
-    });
-
-    const uiId = addStep(`Implement UI / logic for: ${deliverable}`, {
-      dependsOn: [scaffoldId],
-      effort: "2h–1 day",
-      verification: `Feature is interactive in dev build; edge cases (empty state, error state, loading state) are handled visibly.`,
-    });
-
-    const integrateId = addStep(`Integrate and verify: ${deliverable}`, {
-      dependsOn: [uiId],
-      effort: "1–2h",
-      verification: `End-to-end manual test passes; no console errors; responsive on mobile width.`,
-    });
-
-    lastInfraId = integrateId;
-  }
-
-  // ── Final Step: Deployment / Handoff ──
-  // Only add if not already present in deliverables.
-  if (!deliverables.some((d) => /\b(deploy|launch|ship|publish|release)\b/i.test(d))) {
-    addStep("Deploy / publish to production or staging environment", {
-      dependsOn: [lastInfraId],
-      effort: "30m–1h",
-      verification: "Live URL is accessible; smoke test passes; README updated with run/deploy instructions.",
-    });
-  }
-
-  return steps;
-}
-
-/**
- * Create a slug from a deliverable string for use in file names or IDs.
- *
- * WHY: Consistent naming reduces decision fatigue when generating
- * documentation or branch names inside the plan.
- *
- * @param text - Raw deliverable text.
- * @returns Lowercase hyphenated slug.
- */
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .substring(0, 40);
-}
-
-// ═══════════════════════════════════════════════
-// Section 4 — Plan Quality Self-Check
-// ═══════════════════════════════════════════════
-
-/**
- * Score the plan's completeness before it leaves the planner.
- *
- * WHY: Catching a weak plan here prevents wasted evaluator cycles.
- * If the score is too low, the planner should inject a "Clarification"
- * step rather than ship a broken plan.
- *
- * Scoring rubric (0.0–1.0 per dimension, then averaged):
- *
- * STRUCTURAL (0.25 weight)
- * - Steps > 1 and < 20?                    → +0.25
- * - Every step has verificationMethod?     → +0.25
- * - Every step has estimatedEffort?        → +0.25
- * - Dependencies form a DAG (no cycles)?   → +0.25
- *
- * COVERAGE (0.35 weight)
- * - Every deliverable from extractDeliverables is represented? → +0.4
- * - Assumptions list is non-empty?         → +0.2
- * - Risks list is non-empty?               → +0.2
- * - At least one bootstrap/setup step?     → +0.2
- *
- * INPUT UTILIZATION (0.25 weight)
- * - Seed.goal is reflected in step descriptions (not just copied)? → +0.4
- * - At least one interview answer influenced a step?               → +0.3
- * - At least one research finding influenced a step?               → +0.3
- *
- * CLARITY (0.15 weight)
- * - No step description contains "and" (atomicity)? → +0.5
- * - No subjective adjectives in step descriptions?  → +0.5
- *
- * @param plan - The plan to score.
- * @param deliverables - Expected deliverables for coverage check.
- * @returns Composite score 0.0–1.0.
- */
-function scorePlanCompleteness(plan: Plan, deliverables: string[]): number {
-  let structural = 0;
-  let coverage = 0;
-  let inputUtil = 0;
-  let clarity = 0;
-
-  // Structural
-  if (plan.steps.length > 1 && plan.steps.length < 20) structural += 0.25;
-  if (plan.steps.every((s) => s.verificationMethod && s.verificationMethod.length > 10)) structural += 0.25;
-  if (plan.steps.every((s) => s.estimatedEffort && s.estimatedEffort.length > 0)) structural += 0.25;
-
-  // DAG check (simple cycle detection via DFS)
-  const adj = new Map<string, string[]>();
-  const allIds = new Set(plan.steps.map((s) => s.id));
-  for (const s of plan.steps) {
-    adj.set(s.id, s.dependsOn?.filter((d) => allIds.has(d)) ?? []);
-  }
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const hasCycle = (node: string): boolean => {
-    visiting.add(node);
-    for (const neighbor of adj.get(node) ?? []) {
-      if (visiting.has(neighbor)) return true;
-      if (!visited.has(neighbor) && hasCycle(neighbor)) return true;
-    }
-    visiting.delete(node);
-    visited.add(node);
-    return false;
-  };
-  let cycleFound = false;
-  for (const id of Array.from(allIds)) {
-    if (!visited.has(id) && hasCycle(id)) {
-      cycleFound = true;
-      break;
-    }
-  }
-  if (!cycleFound) structural += 0.25;
-
-  // Coverage
-  const stepTexts = plan.steps.map((s) => s.description.toLowerCase());
-  const allDeliverablesCovered = deliverables.every((d) =>
-    stepTexts.some((st) => st.includes(d.toLowerCase().substring(0, 20))),
-  );
-  if (allDeliverablesCovered) coverage += 0.4;
-  if (plan.assumptions.length > 0) coverage += 0.2;
-  if (plan.risks.length > 0) coverage += 0.2;
-  if (stepTexts.some((st) => /\b(initialize|bootstrap|setup|install|configure)\b/.test(st))) coverage += 0.2;
-
-  // Input utilization
-  const goalWords = plan.goal.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  const goalReflected = goalWords.some((gw) => stepTexts.some((st) => st.includes(gw)));
-  if (goalReflected) inputUtil += 0.4;
-  if (plan.interviews.length > 0) inputUtil += 0.3;
-  if (plan.research.length > 0) inputUtil += 0.3;
-
-  // Clarity
-  const noCompoundSteps = plan.steps.every((s) => !/\band\b/i.test(s.description));
-  if (noCompoundSteps) clarity += 0.5;
-  const noSubjectiveSteps = plan.steps.every(
-    (s) => !/\b(good|nice|best|modern|clean|awesome|great|better|user-friendly|robust|scalable)\b/i.test(s.description),
-  );
-  if (noSubjectiveSteps) clarity += 0.5;
-
-  return Math.round((structural * 0.25 + coverage * 0.35 + inputUtil * 0.25 + clarity * 0.15) * 100) / 100;
 }
 
 // ═══════════════════════════════════════════════
@@ -624,20 +491,13 @@ function scorePlanCompleteness(plan: Plan, deliverables: string[]): number {
  * Generate an initial Plan from a raw Seed, incorporating any interviews
  * and research gathered so far.
  *
- * Role: Kimi Code synthesizes a concrete Plan by reasoning over the seed
- * goal, user interview answers, and web research findings.
- *
- * Position in the loop: Runs first to bootstrap the Plan, before evaluation.
- * After evaluation and refinement, the plan evolves via plan-refiner.ts.
- *
  * Algorithm:
- * 1. Analyze goal ambiguity. If > 0.7, inject a "Clarification needed" step
- *    and flag assumptions heavily.
- * 2. Extract deliverables from goal + interviews + research.
- * 3. Identify assumptions and risks.
- * 4. Synthesize steps with dependencies, effort, and verification.
- * 5. Self-check completeness. If < 0.5, prepend a "Deep-dive research"
- *    step to buy more information before execution.
+ * 1. Detect project type from goal keywords.
+ * 2. Select a base template matching the type.
+ * 3. Customize the template using constraints, nonGoals, interviews, and
+ *    research findings.
+ * 4. Assign dependencies to form a sequential DAG.
+ * 5. Generate assumptions and risks.
  * 6. Assemble and return the Plan.
  *
  * @param seed - Immutable user seed.
@@ -650,42 +510,33 @@ export function generatePlan(
   interviews: InterviewQA[] = [],
   research: ResearchItem[] = [],
 ): Promise<Plan> {
-  // ── 1. Ambiguity check ──
-  const ambiguity = analyzeGoalAmbiguity(seed.goal);
+  // 1. Detect project type.
+  const type = detectProjectType(seed.goal);
 
-  // ── 2. Deliverables ──
-  const deliverables = extractDeliverables(seed, interviews, research);
+  // 2. Select base template.
+  const baseTemplate = getBaseTemplate(type);
 
-  // ── 3. Assumptions & Risks ──
-  const assumptions = identifyAssumptions(seed, interviews, research);
-  const risks = identifyRisks(seed, interviews, research);
+  // 3. Convert to PlanStep with temporary ids.
+  let steps: PlanStep[] = baseTemplate.map((partial, idx) => ({
+    id: `step-${idx + 1}`,
+    description: partial.description,
+    estimatedEffort: partial.estimatedEffort,
+    verificationMethod: partial.verificationMethod,
+  }));
 
-  // ── 4. Steps ──
-  let steps = synthesizeSteps(deliverables);
+  // 4. Customize using constraints, nonGoals, interviews, research.
+  steps = customizeSteps(steps, seed, interviews, research);
 
-  // ── 5. Low-ambiguity guard ──
-  // If the goal is extremely vague, the first step must be clarification
-  // rather than blind execution.
-  if (ambiguity > 0.7) {
-    const clarifyId = crypto.randomUUID();
-    steps.unshift({
-      id: clarifyId,
-      description: "CLARIFICATION REQUIRED: Goal is too vague to plan safely. Conduct targeted interviews or research before proceeding.",
-      dependsOn: [],
-      estimatedEffort: "30m–1h",
-      verificationMethod: "At least 3 specific constraints, technologies, or features are documented and ambiguity score drops below 0.5.",
-    });
-    // Shift all other steps to depend on clarification.
-    for (const s of steps) {
-      if (s.id !== clarifyId && (!s.dependsOn || s.dependsOn.length === 0)) {
-        s.dependsOn = [clarifyId];
-      }
-    }
-  }
+  // 5. Assign sequential dependencies (guaranteed DAG).
+  assignDependsOn(steps);
 
-  // ── 6. Completeness guard ──
-  const draftPlan: Plan = {
-    id: crypto.randomUUID(),
+  // 6. Generate assumptions and risks.
+  const assumptions = generateAssumptions(seed, interviews, research);
+  const risks = generateRisks(seed, interviews, research);
+
+  // 7. Assemble plan.
+  const plan: Plan = {
+    id: `plan-${Date.now()}`,
     version: 1,
     goal: seed.goal,
     steps,
@@ -695,22 +546,5 @@ export function generatePlan(
     research,
   };
 
-  const completeness = scorePlanCompleteness(draftPlan, deliverables);
-  if (completeness < 0.5 && steps[0]?.description !== "Deep-dive research before execution") {
-    const researchId = crypto.randomUUID();
-    steps.unshift({
-      id: researchId,
-      description: "Deep-dive research: Plan completeness is too low. Investigate missing technology, scope, or acceptance criteria before coding.",
-      dependsOn: [],
-      estimatedEffort: "1–2h",
-      verificationMethod: "Completeness score rises to ≥ 0.5 or research items increase by ≥ 2 with direct impact on step definitions.",
-    });
-    for (const s of steps) {
-      if (s.id !== researchId && (!s.dependsOn || s.dependsOn.length === 0)) {
-        s.dependsOn = [researchId];
-      }
-    }
-  }
-
-  return Promise.resolve(draftPlan);
+  return Promise.resolve(plan);
 }
