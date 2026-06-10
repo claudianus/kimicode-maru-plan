@@ -1,0 +1,25 @@
+{
+  "name": "kimi-harness",
+  "version": "0.1.0",
+  "description": "Ouroboros-inspired self-improving harness for Kimi Code",
+  "module": "src/index.ts",
+  "type": "module",
+  "bin": {
+    "kimi-harness": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "type-check": "tsc --noEmit",
+    "build": "bun build src/cli.ts --outfile=dist/kimi-harness --target=node"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "engines": {
+    "bun": ">=1.0"
+  }
+}
