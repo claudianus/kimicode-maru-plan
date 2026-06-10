@@ -1,4 +1,4 @@
-import type { Seed, Plan, InterviewQA } from './types.js';
+import type { Seed, Plan, InterviewQA, PlanVerdict } from './types.js';
 
 /**
  * Generate interview questions based on the seed and current plan.
@@ -6,19 +6,31 @@ import type { Seed, Plan, InterviewQA } from './types.js';
  *
  * @param seed - The original user seed.
  * @param plan - The current plan iteration.
- * @returns Array of InterviewQA items with ids like q-1, q-2.
+ * @param generationNumber - Current generation number for question IDs.
+ * @param verdict - Optional plan verdict to include evaluator-identified questions.
+ * @returns Array of InterviewQA items with ids like g1-q1, g1-q2.
  */
-export function generateQuestions(seed: Seed, plan: Plan): InterviewQA[] {
+export function generateQuestions(seed: Seed, plan: Plan, generationNumber: number, verdict?: PlanVerdict): InterviewQA[] {
   const questions: InterviewQA[] = [];
   let qIndex = 1;
 
   const addQuestion = (question: string, reason: string) => {
     questions.push({
-      id: `q-${qIndex++}`,
+      id: `g${generationNumber}-q${qIndex++}`,
       question,
       reason,
     });
   };
+
+  if (verdict?.missingQuestions.length) {
+    for (const mq of verdict.missingQuestions) {
+      questions.push({
+        id: `g${generationNumber}-q${qIndex++}`,
+        question: mq,
+        reason: 'Identified by evaluator',
+      });
+    }
+  }
 
   if (seed.goal.length < 30) {
     addQuestion(

@@ -25,7 +25,7 @@
 
 ## Non-Obvious Patterns
 
-**Executor is a stub** — `executeGeneration` currently returns an empty `Generation`. In a real session it wraps Kimi Code (or another LLM) to produce `CodeChange[]`. Keep the stub interface stable; only the internals change.
+**Planner modules are stubs** — `planner`, `plan-evaluator`, `plan-refiner`, `interviewer`, and `researcher` are currently stubs or rule-based heuristics. In a real session they wrap LLM calls or user interactions. Keep the interfaces stable.
 
 **Evaluator defaults are conservative** — Semantic evaluation returns 0.5 alignment until an LLM-based evaluator is wired in. This prevents false passes.
 

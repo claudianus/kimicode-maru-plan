@@ -40,8 +40,14 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         bestPlan = plan;
       }
 
-      if (verdict.passed || verdict.score >= 0.85) {
+      if (verdict.score >= 0.85) {
         console.log(`\n✅ Plan accepted at generation ${i} (score ${verdict.score.toFixed(2)})!`);
+        printPlan(plan);
+        return plan;
+      }
+
+      if (options.stopOnPass !== false && verdict.passed) {
+        console.log(`\n✅ Plan passed at generation ${i} (score ${verdict.score.toFixed(2)})!`);
         printPlan(plan);
         return plan;
       }
@@ -49,20 +55,19 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
       console.log(`   Feedback: ${verdict.feedback.slice(0, 200)}${verdict.feedback.length > 200 ? '...' : ''}`);
 
       if (verdict.missingQuestions.length > 0) {
-        const newQuestions = generateQuestions(seed, plan);
+        const newQuestions = generateQuestions(seed, plan, i, verdict);
         plan.interviews = mergeById(plan.interviews, newQuestions);
         console.log(`   Questions: +${newQuestions.length} (total ${plan.interviews.length})`);
       }
 
-      const evolution = await refinePlan(plan, verdict);
-      plan = evolution.updatedPlan;
-
-      const researchQueries = [...verdict.missingResearch, ...evolution.researchQueries];
-      if (researchQueries.length > 0) {
-        const newResearch = await conductResearch(researchQueries);
+      if (verdict.missingResearch.length > 0) {
+        const newResearch = await conductResearch(verdict.missingResearch);
         plan.research = mergeById(plan.research, newResearch);
         console.log(`   Research: +${newResearch.length} (total ${plan.research.length})`);
       }
+
+      const evolution = await refinePlan(plan, verdict);
+      plan = evolution.updatedPlan;
     } catch (err) {
       console.error(`   Generation ${i} failed:`, err);
     }

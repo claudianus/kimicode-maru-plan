@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from 'util';
+import { join } from 'path';
 import { parseSeed } from './parser.js';
 import { runLoop } from './loop.js';
 import type { Plan } from './types.js';
@@ -47,5 +48,6 @@ const plan: Plan = await runLoop(seed, {
 });
 
 const yamlOutput = stringify(plan, { sortMapEntries: true });
-await Bun.write('plan.yaml', yamlOutput);
-console.log('📄 Final plan written to plan.yaml');
+const planPath = join(values.cwd!, 'plan.yaml');
+await Bun.write(planPath, yamlOutput);
+console.log(`📄 Final plan written to ${planPath}`);
