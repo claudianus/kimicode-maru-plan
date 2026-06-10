@@ -46,8 +46,8 @@ export function addExtraSkillDir(dir: string): void {
     // Already exists — check if dir is already in the array
     const regex = /extra_skill_dirs\s*=\s*\[(.*?)\]/s;
     const match = config.match(regex);
-    if (match && match[1]) {
-      const arrContent = match[1];
+    if (match) {
+      const arrContent = match[1] ?? '';
       if (!arrContent.includes(quoted)) {
         const newArr = arrContent.trim() ? `${arrContent.trim()}, ${quoted}` : quoted;
         config = config.replace(regex, `extra_skill_dirs = [${newArr}]`);
