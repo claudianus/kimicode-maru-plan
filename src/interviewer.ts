@@ -1,8 +1,18 @@
 import type { Seed, Plan, InterviewQA, PlanVerdict } from './types.js';
 
 /**
- * Generate interview questions based on the seed and current plan.
- * Identifies ambiguities, missing constraints, vague steps, and missing effort estimates.
+ * Interviewer module — defines the **interview** role in the planning harness.
+ *
+ * Role:
+ * Identifies ambiguities, missing constraints, vague steps, and missing effort
+ * estimates in the current plan, then generates clarifying questions for the user.
+ *
+ * How Kimi Code performs this role:
+ * Kimi Code asks the user clarifying questions via `AskUserQuestion`.
+ *
+ * Where it fits in the loop:
+ * Runs after evaluation (`plan-evaluator.ts`) and before research (`researcher.ts`).
+ * The loop flow is: plan → evaluate → **interview** → research → refine → repeat.
  *
  * @param seed - The original user seed.
  * @param plan - The current plan iteration.
