@@ -236,14 +236,8 @@ function customizeSteps(
   const customized = steps.map((s) => ({ ...s }));
   const nonGoalsLower = (seed.nonGoals ?? []).map((ng) => ng.toLowerCase());
 
-  // Rule 1: Inject constraints into the first step.
-  if (customized.length > 0 && seed.constraints.length > 0) {
-    const first = customized[0];
-    if (first) {
-      const constraintList = seed.constraints.join("; ");
-      first.description += ` (constraints: ${constraintList})`;
-    }
-  }
+  // Rule 1: Constraints are kept in assumptions only, not injected into step
+  // descriptions, to avoid triggering nonGoal false positives.
 
   // Rule 2: Filter out steps that match nonGoals.
   const filtered = customized.filter((step) => {

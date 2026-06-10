@@ -10,7 +10,7 @@ export function runPreGenerationGate(seed: Seed): GateResult {
   const violations: string[] = [];
   if (!seed.goal || seed.goal.trim().length === 0) violations.push('Goal is empty');
   if (seed.goal.length > 200) violations.push('Goal exceeds 200 characters');
-  const hasNoun = /\b(project|app|site|system|tool|api|service|blog|web|cli|mobile|platform|feature)\b/i.test(seed.goal);
+  const hasNoun = /\b(project|app|site|website|web|frontend|landing page|page|platform|feature|api|service|blog|tool|system)\b/i.test(seed.goal);
   const hasVerb = /\b(build|create|make|develop|implement|design|deploy|add|integrate)\b/i.test(seed.goal);
   if (!hasNoun) violations.push('Goal should contain a noun (e.g., app, site, API)');
   if (!hasVerb) violations.push('Goal should contain a verb (e.g., build, create, deploy)');
