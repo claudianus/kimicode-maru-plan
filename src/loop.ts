@@ -18,12 +18,13 @@
  * 4. The loop repeats until the Plan passes or `maxGenerations` is reached.
  */
 
-import type { Seed, LoopOptions, Plan, PlanVerdict, InterviewQA, ResearchItem } from './types.js';
+import type { Seed, LoopOptions, Plan, PlanVerdict, InterviewQA, ResearchItem, ConsensusVerdict } from './types.js';
 import { generatePlan } from './planner.js';
 import { evaluatePlan } from './plan-evaluator.js';
 import { refinePlan } from './plan-refiner.js';
 import { generateQuestions } from './interviewer.js';
 import { conductResearch } from './researcher.js';
+import { evaluateAsDeveloper, evaluateAsPM, evaluateAsSecurity, evaluateAsUX, aggregateVerdicts } from './evaluators/index.js';
 
 function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
   const seen = new Set(existing.map((x) => x.id));
@@ -54,9 +55,22 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
     console.log(`\n━━━━━━━━━━━━━━━ Generation ${i}/${maxGenerations} ━━━━━━━━━━━━━━━`);
 
     try {
-      const verdict: PlanVerdict = await evaluatePlan(plan, seed);
+      const baseVerdict = await evaluatePlan(plan, seed);
+      const personaVerdicts = await Promise.all([
+        evaluateAsDeveloper(plan, seed),
+        evaluateAsPM(plan, seed),
+        evaluateAsSecurity(plan, seed),
+        evaluateAsUX(plan, seed),
+      ]);
+      const verdict: ConsensusVerdict = aggregateVerdicts(personaVerdicts, baseVerdict);
 
-      console.log(`   Score: ${verdict.score.toFixed(2)}`);
+      console.log(`   Consensus: ${verdict.score.toFixed(2)}`);
+      for (const pv of verdict.personaVerdicts) {
+        console.log(`      ${pv.persona}: ${pv.score.toFixed(2)}${pv.passed ? '' : ' ❌'}`);
+      }
+      if (verdict.disagreements.length > 0) {
+        console.log(`   Disagreements: ${verdict.disagreements.join('; ')}`);
+      }
 
       if (verdict.score > bestScore) {
         bestScore = verdict.score;
