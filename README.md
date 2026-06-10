@@ -1,41 +1,118 @@
 # 🐍 kimi-harness
 
-Planning harness for **Kimi Code**.
+> Turn vague ideas into concrete, actionable plans.
 
-> **Mission:** Interview → Research → Plan → Evaluate → Refine. Never poll.
+[![npm version](https://img.shields.io/npm/v/kimi-harness.svg)](https://www.npmjs.com/package/kimi-harness)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This is a **meta-framework** that Kimi Code reads and follows. Each module defines a role; Kimi Code performs the actual work using its own tools (`AskUserQuestion`, `WebSearch`, reasoning, code generation).
-
----
-
-## Philosophy
-
-| Principle | Meaning |
-|-----------|---------|
-| **Goal-Anchor** | `seed.goal` is immutable. The plan must always align. |
-| **Interview First** | Ambiguity is the enemy. Clarify before planning. |
-| **Research Before Commit** | Unknown unknowns kill plans. Investigate early. |
-| **No Polling** | Event-driven loops only. No busy-waiting. |
-| **Minimal Intrusion** | The harness guides; Kimi Code decides. |
+`kimi-harness` is a **planning harness** that interviews, researches, plans, evaluates, and refines — in a loop — until your idea becomes a solid execution plan. It works standalone (rule-based) or as a foundation for LLM-augmented planning.
 
 ---
 
 ## Install
 
 ```bash
-bun install
+# npm
+npm install -g kimi-harness
+
+# bun
+bun install -g kimi-harness
+
+# Or use without installing
+npx kimi-harness seed.yaml
 ```
 
 ---
 
-## Usage
+## Quick Start
+
+Write a `seed.yaml`:
+
+```yaml
+goal: "Build a personal tech blog with dark mode"
+
+constraints:
+  - "Use Astro"
+  - "Deploy to Cloudflare Pages"
+
+nonGoals:
+  - "CMS"
+  - "Comments"
+
+maxGenerations: 5
+```
+
+Run it:
 
 ```bash
-# Run a seed
-bun run src/cli.ts seed.yaml --cwd=./my-project
+kimi-harness seed.yaml --cwd=./my-project
+# → generates ./my-project/plan.yaml
+```
 
-# Override max generations
-bun run src/cli.ts seed.yaml --max-generations=10
+---
+
+## What You Get
+
+```yaml
+# plan.yaml
+goal: "Build a personal tech blog with dark mode"
+version: 3
+steps:
+  - id: init
+    description: "Initialize Astro project with Tailwind"
+    estimatedEffort: "2h"
+    verificationMethod: "Dev server starts without errors"
+  - id: darkmode
+    description: "Implement dark mode toggle"
+    dependsOn: [init]
+    estimatedEffort: "3h"
+    verificationMethod: "Toggle persists across reloads"
+  - id: deploy
+    description: "Configure Cloudflare Pages deployment"
+    dependsOn: [optimize]
+    estimatedEffort: "1h"
+    verificationMethod: "Production URL returns 200"
+assumptions:
+  - "Team has Node.js 20+ installed"
+risks:
+  - "Astro Cloudflare adapter may have SSR limits"
+```
+
+---
+
+## How It Works
+
+```
+Seed (your idea)
+   ↓
+Planner ──► Plan
+   ↓
+Evaluator ──► Score (ambiguity · completeness · feasibility · alignment)
+   ↓
+Interviewer ──► Questions to clarify gaps
+   ↓
+Researcher ──► Web search topics to validate assumptions
+   ↓
+Refiner ──► Improved Plan
+   ↓
+(Repeat until score ≥ 0.85 or max generations)
+   ↓
+plan.yaml
+```
+
+All modules are **rule-based by default** — no API keys, no LLM required. You can swap any module for an LLM-augmented implementation.
+
+---
+
+## Programmatic API
+
+```typescript
+import { parseSeed, runLoop } from 'kimi-harness';
+
+const seed = parseSeed('./seed.yaml');
+const plan = await runLoop(seed, { cwd: './my-project', maxGenerations: 5 });
+
+console.log(plan.steps);
 ```
 
 ---
@@ -43,38 +120,35 @@ bun run src/cli.ts seed.yaml --max-generations=10
 ## Seed Format
 
 ```yaml
-goal: "Build a personal portfolio site with a dark-mode toggle"
+goal: "One-sentence mission"
 
-constraints:
-  - "Use Astro, not Next.js"
-  - "Must be deployable to Cloudflare Pages"
-  - "No JavaScript frameworks on the client"
+constraints:        # Hard rules the plan must respect
+  - "Use Postgres, not MongoDB"
+  - "Must work offline"
 
-nonGoals:
-  - "CMS integration"
-  - "Multi-language support"
+nonGoals:           # Explicitly out-of-scope
+  - "Mobile app"
+  - "Real-time sync"
 
-context: |
-  The user is a backend developer who wants a simple,
-  fast-loading site to showcase Go and Rust projects.
+context: |          # Free-form background (optional)
+  The team is 2 backend devs, no frontend experience.
 
-maxGenerations: 5
+maxGenerations: 5   # Loop limit (default: 5)
 ```
 
 ---
 
-## Loop Anatomy
+## Kimi Code Integration
 
-```
-Plan ──► Evaluate ──► Interview ──► Research ──► Refine ──► Next Plan
-  │         │              │             │           │
-  │      ambiguity      AskUserQuestion  WebSearch   derive questions
-  │      completeness   clarify scope    investigate derive research
-  │      feasibility    fill gaps        validate    update plan
-  │      alignment                                    
-  ▼
-Output: concrete plan.yaml
-```
+`kimi-harness` was originally designed as a meta-framework for Kimi Code. If you use Kimi Code, you can treat this package as a **planning skill**:
+
+1. Install it in your project: `npm install kimi-harness`
+2. Write a `seed.yaml`.
+3. Ask Kimi Code: `"Use the kimi-harness framework to refine this seed into a plan."`
+
+Kimi Code will read the module definitions (interviewer, researcher, planner, evaluator, refiner) and perform each role using its native tools (`AskUserQuestion`, `WebSearch`, reasoning).
+
+See [docs/USAGE.md](docs/USAGE.md) for detailed integration patterns.
 
 ---
 
@@ -84,39 +158,23 @@ Output: concrete plan.yaml
 src/
 ├── types.ts           # Seed, Plan, PlanVerdict, InterviewQA, ResearchItem
 ├── parser.ts          # YAML seed → typed Seed
-├── interviewer.ts     # Generate clarifying questions
-├── researcher.ts      # Define research topics
-├── planner.ts         # Synthesize Plan from seed + interviews + research
-├── plan-evaluator.ts  # Evaluate Plan quality
-├── plan-refiner.ts    # Identify improvements
-├── loop.ts            # Orchestrate Plan→Evaluate→Interview→Research→Refine
+├── planner.ts         # Rule-based Plan synthesis
+├── plan-evaluator.ts  # 4-dimension scoring rubric
+├── plan-refiner.ts    # Score-driven refinement strategies
+├── interviewer.ts     # Gap-driven question generation
+├── researcher.ts      # Tech knowledge base + query generation
+├── loop.ts            # Orchestrates the planning loop
 ├── cli.ts             # CLI entrypoint
 └── index.ts           # Library exports
 ```
 
 ---
 
-## How Kimi Code Uses This
-
-1. **Read** `src/types.ts` to learn the data model.
-2. **Read** `src/loop.ts` to learn the planning flow.
-3. **Read** each module to understand its role.
-4. **Perform** the role using Kimi Code's native capabilities.
-
-**Module roles:**
-- `interviewer.ts` → Kimi Code asks clarifying questions via `AskUserQuestion`.
-- `researcher.ts` → Kimi Code searches the web via `WebSearch`.
-- `planner.ts` → Kimi Code synthesizes a concrete Plan.
-- `plan-evaluator.ts` → Kimi Code evaluates Plan quality.
-- `plan-refiner.ts` → Kimi Code identifies improvements.
-
----
-
 ## Roadmap
 
-- [ ] Real semantic evaluation (Kimi Code evaluates its own plan)
-- [ ] Interactive interview loop (pause for user answers mid-planning)
-- [ ] Web research integration (WebSearch results fed into Plan)
+- [ ] LLM-augmented planner (OpenAI / Anthropic adapter)
+- [ ] Interactive interview mode (pause for user input mid-loop)
+- [ ] Web research integration (Serper / Tavily adapter)
 - [ ] Parallel consensus evaluation (multi-perspective plan review)
 - [ ] Lateral thinking on stagnation (break out of local maxima)
 
