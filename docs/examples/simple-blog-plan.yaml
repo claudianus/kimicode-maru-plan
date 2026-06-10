@@ -1,0 +1,77 @@
+id: "plan-1-1718040000000"
+version: 3
+goal: "Build a personal tech blog with a dark-mode toggle"
+
+steps:
+  - id: "init"
+    description: "Initialize Astro 4.x project with TypeScript and Tailwind CSS"
+    estimatedEffort: "2h"
+    verificationMethod: "npm run dev starts without errors"
+
+  - id: "darkmode"
+    description: "Implement dark-mode toggle using CSS variables and localStorage persistence"
+    dependsOn: ["init"]
+    estimatedEffort: "3h"
+    verificationMethod: "Toggle switches theme instantly and persists after reload"
+
+  - id: "layout"
+    description: "Create MDX content layout with syntax highlighting and responsive design"
+    dependsOn: ["darkmode"]
+    estimatedEffort: "4h"
+    verificationMethod: "Mobile and desktop views render correctly"
+
+  - id: "seo"
+    description: "Add SEO meta tags, OpenGraph images, and structured data"
+    dependsOn: ["layout"]
+    estimatedEffort: "2h"
+    verificationMethod: "Social sharing debugger shows correct preview"
+
+  - id: "rss"
+    description: "Generate RSS feed and sitemap.xml for all posts"
+    dependsOn: ["layout"]
+    estimatedEffort: "1h"
+    verificationMethod: "RSS reader successfully subscribes to feed"
+
+  - id: "deploy"
+    description: "Configure Cloudflare Pages adapter and deploy"
+    dependsOn: ["seo", "rss"]
+    estimatedEffort: "1h"
+    verificationMethod: "Production URL returns 200 and serves assets"
+
+  - id: "lighthouse"
+    description: "Optimize images, fonts, and Core Web Vitals for Lighthouse >= 90"
+    dependsOn: ["deploy"]
+    estimatedEffort: "3h"
+    verificationMethod: "Lighthouse CI reports Performance >= 90"
+
+assumptions:
+  - "User has Node.js 20+ and bun installed"
+  - "Cloudflare account already exists"
+  - "Blog content will be written in Korean"
+  - "No custom domain required initially"
+
+risks:
+  - "Astro's Cloudflare adapter may have SSR limitations affecting dynamic routes"
+  - "Korean font subsetting may increase bundle size unexpectedly"
+  - "Lighthouse 90 target may require image format trade-offs (AVIF vs compatibility)"
+
+interviews:
+  - id: "g1-q1"
+    question: "The goal seems quite short. Could you elaborate on what you are trying to achieve?"
+    answer: "I want a fast, minimal blog to write about Go and Rust backend topics."
+    reason: "A short goal may hide ambiguity and make alignment difficult."
+
+  - id: "g1-q2"
+    question: "No constraints have been defined. Are there any hard constraints this plan must respect?"
+    answer: "Astro, Cloudflare Pages, no client JS frameworks, Lighthouse >= 90"
+    reason: "Constraints prevent scope creep and guide the planner."
+
+research:
+  - id: "r1"
+    query: "Astro 4.x Cloudflare Pages adapter SSR limitations 2024"
+    summary: "Official adapter supports static and SSR modes. Edge runtime has 50ms CPU limit for free tier."
+    source: "https://docs.astro.build/en/guides/integrations-guide/cloudflare/"
+
+  - id: "r2"
+    query: "Tailwind CSS Astro performance best practices"
+    summary: "Use @tailwindcss/vite plugin for JIT. Purge unused styles in production. Typical bundle: ~8KB CSS."

@@ -1,0 +1,19 @@
+goal: "Build a personal tech blog with a dark-mode toggle"
+
+constraints:
+  - "Use Astro, not Next.js"
+  - "Must be deployable to Cloudflare Pages"
+  - "No JavaScript frameworks on the client"
+  - "Lighthouse performance score >= 90"
+
+nonGoals:
+  - "CMS integration"
+  - "Multi-language support"
+  - "Comment system"
+
+context: |
+  The user is a backend developer who wants a simple,
+  fast-loading site to showcase Go and Rust projects.
+  Audience is mostly Korean developers.
+
+maxGenerations: 5
