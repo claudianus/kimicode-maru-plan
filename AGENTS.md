@@ -1,35 +1,58 @@
 # kimi-harness — AGENTS.md
 
-> Ouroboros-inspired self-improving harness for Kimi Code. Bun + TypeScript.
+> Planning harness for Kimi Code. Bun + TypeScript.
+>
+> This project is a **meta-framework** that Kimi Code reads and follows.
+> Each module defines a role; Kimi Code performs the actual work using
+> its own tools (AskUserQuestion, WebSearch, reasoning, code generation).
 
 ---
 
 ## Boundaries
 
 ### ✅ Always
-- `seed.goal` is immutable during evolution.
-- Drift score >= 0.5 → hard reset to original goal.
-- Mechanical evaluation precedes semantic evaluation.
-- Ethical constraints are inherited, never dropped.
-- Use `bun` for all scripting and execution.
+- `seed.goal` is immutable during planning.
 - Type-check before commit: `bun run type-check`
+- Each module interface is stable — evolve internals, not signatures.
 
 ### 🚫 Never
-- Apply untested code changes to the host working tree without a worktree.
-- Delete or modify `seed.goal` during `evolveSeed`.
 - Use `as any`, `@ts-ignore`, `@ts-expect-error`.
 - Poll for file changes or process status.
 - Log PII or credentials.
 
 ---
 
+## How Kimi Code Uses This Harness
+
+**Read, don't just execute.** Kimi Code should:
+1. Read `src/types.ts` to understand the data model (Seed, Plan, PlanVerdict).
+2. Read `src/loop.ts` to understand the planning flow.
+3. Read each module to understand its role in the flow.
+4. Perform the role using Kimi Code's native capabilities.
+
+**Module roles:**
+- `interviewer.ts` → Kimi Code asks the user clarifying questions via `AskUserQuestion`.
+- `researcher.ts` → Kimi Code searches the web via `WebSearch`.
+- `planner.ts` → Kimi Code synthesizes a concrete Plan from seed + interviews + research.
+- `plan-evaluator.ts` → Kimi Code evaluates the Plan (ambiguity, completeness, feasibility, alignment).
+- `plan-refiner.ts` → Kimi Code identifies improvements and generates follow-up questions/research.
+
+**The loop:**
+```
+plan → evaluate → interview (AskUserQuestion) → research (WebSearch) → refine → repeat
+```
+
+Kimi Code iterates until the Plan score is high enough or max generations reached.
+
+---
+
 ## Non-Obvious Patterns
 
-**Planner modules are stubs** — `planner`, `plan-evaluator`, `plan-refiner`, `interviewer`, and `researcher` are currently stubs or rule-based heuristics. In a real session they wrap LLM calls or user interactions. Keep the interfaces stable.
+**Planner modules are framework definitions** — The functions in `planner`, `plan-evaluator`, `plan-refiner`, `interviewer`, and `researcher` are skeletal. They declare *what* Kimi Code should do; Kimi Code performs the actual reasoning, questioning, and searching. Keep the interfaces stable.
 
-**Evaluator defaults are conservative** — Semantic evaluation returns 0.5 alignment until an LLM-based evaluator is wired in. This prevents false passes.
+**Evaluator defaults are conservative** — `plan-evaluator` returns 0.5 on all dimensions as a placeholder. Kimi Code should override this with real semantic evaluation.
 
-**Evolution appends constraints** — `evolveSeed` never removes original constraints; it only appends derived ones. This prevents constraint drift.
+**Evolution preserves original constraints** — Derived constraints are appended, never removed. This prevents goal drift.
 
 ---
 

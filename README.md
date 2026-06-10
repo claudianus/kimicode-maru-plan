@@ -1,8 +1,10 @@
 # 🐍 kimi-harness
 
-Ouroboros-inspired self-improving harness for **Kimi Code**.
+Planning harness for **Kimi Code**.
 
-> **Mission:** Execute → Evaluate → Evolve. Never poll. Always drift-guard.
+> **Mission:** Interview → Research → Plan → Evaluate → Refine. Never poll.
+
+This is a **meta-framework** that Kimi Code reads and follows. Each module defines a role; Kimi Code performs the actual work using its own tools (`AskUserQuestion`, `WebSearch`, reasoning, code generation).
 
 ---
 
@@ -10,11 +12,11 @@ Ouroboros-inspired self-improving harness for **Kimi Code**.
 
 | Principle | Meaning |
 |-----------|---------|
-| **Goal-Anchor** | `seed.goal` is immutable. Drift beyond 0.5 triggers hard reset. |
-| **Mechanical First** | Build, test, lint must pass before semantic evaluation. |
-| **Ethical Guard** | Every seed carries `ethicalConstraints`. No exceptions. |
+| **Goal-Anchor** | `seed.goal` is immutable. The plan must always align. |
+| **Interview First** | Ambiguity is the enemy. Clarify before planning. |
+| **Research Before Commit** | Unknown unknowns kill plans. Investigate early. |
 | **No Polling** | Event-driven loops only. No busy-waiting. |
-| **Minimal Intrusion** | Changes are applied atomically via `CodeChange`. No guesswork. |
+| **Minimal Intrusion** | The harness guides; Kimi Code decides. |
 
 ---
 
@@ -41,30 +43,20 @@ bun run src/cli.ts seed.yaml --max-generations=10
 ## Seed Format
 
 ```yaml
-goal: "Implement a Redis-backed caching layer for API responses"
+goal: "Build a personal portfolio site with a dark-mode toggle"
 
 constraints:
-  - "Use ioredis, not node-redis"
-  - "TTL must be configurable per endpoint"
-  - "No blocking calls in the hot path"
-
-acceptanceCriteria:
-  - id: "ac-1"
-    description: "Cache hit returns data without querying the database"
-    verificationMethod: "test"
-  - id: "ac-2"
-    description: "Cache miss populates Redis and returns fresh data"
-    verificationMethod: "test"
-  - id: "ac-3"
-    description: "Build passes without type errors"
-    verificationMethod: "build"
+  - "Use Astro, not Next.js"
+  - "Must be deployable to Cloudflare Pages"
+  - "No JavaScript frameworks on the client"
 
 nonGoals:
-  - "Distributed cache invalidation"
-  - "Cache warming on startup"
+  - "CMS integration"
+  - "Multi-language support"
 
-ethicalConstraints:
-  - "Do not log PII in cache keys or values"
+context: |
+  The user is a backend developer who wants a simple,
+  fast-loading site to showcase Go and Rust projects.
 
 maxGenerations: 5
 ```
@@ -74,14 +66,14 @@ maxGenerations: 5
 ## Loop Anatomy
 
 ```
-Generation 1 ──► Evaluate ──► Evolve ──► Generation 2 ──► ...
-   │                │            │
-   │            mechanical    drift-guard
-   │            semantic      derived-constraints
-   │            feedback      prompt-refinement
-   ▼
-Apply code changes to --cwd
-Run build / test / lint
+Plan ──► Evaluate ──► Interview ──► Research ──► Refine ──► Next Plan
+  │         │              │             │           │
+  │      ambiguity      AskUserQuestion  WebSearch   derive questions
+  │      completeness   clarify scope    investigate derive research
+  │      feasibility    fill gaps        validate    update plan
+  │      alignment                                    
+  ▼
+Output: concrete plan.yaml
 ```
 
 ---
@@ -90,25 +82,43 @@ Run build / test / lint
 
 ```
 src/
-├── types.ts      # Seed, Generation, Verdict, Evolution
-├── parser.ts     # YAML seed → typed Seed
-├── executor.ts   # Code generation + disk application
-├── evaluator.ts  # Mechanical + semantic evaluation
-├── evolver.ts    # Drift detection + prompt refinement
-├── loop.ts       # Orchestrate Execute→Evaluate→Evolve
-├── cli.ts        # CLI entrypoint
-└── index.ts      # Library exports
+├── types.ts           # Seed, Plan, PlanVerdict, InterviewQA, ResearchItem
+├── parser.ts          # YAML seed → typed Seed
+├── interviewer.ts     # Generate clarifying questions
+├── researcher.ts      # Define research topics
+├── planner.ts         # Synthesize Plan from seed + interviews + research
+├── plan-evaluator.ts  # Evaluate Plan quality
+├── plan-refiner.ts    # Identify improvements
+├── loop.ts            # Orchestrate Plan→Evaluate→Interview→Research→Refine
+├── cli.ts             # CLI entrypoint
+└── index.ts           # Library exports
 ```
+
+---
+
+## How Kimi Code Uses This
+
+1. **Read** `src/types.ts` to learn the data model.
+2. **Read** `src/loop.ts` to learn the planning flow.
+3. **Read** each module to understand its role.
+4. **Perform** the role using Kimi Code's native capabilities.
+
+**Module roles:**
+- `interviewer.ts` → Kimi Code asks clarifying questions via `AskUserQuestion`.
+- `researcher.ts` → Kimi Code searches the web via `WebSearch`.
+- `planner.ts` → Kimi Code synthesizes a concrete Plan.
+- `plan-evaluator.ts` → Kimi Code evaluates Plan quality.
+- `plan-refiner.ts` → Kimi Code identifies improvements.
 
 ---
 
 ## Roadmap
 
-- [ ] LLM-based semantic evaluator (goal alignment via Kimi API)
-- [ ] Kimi Code subagent integration (`kimi --auto -p` wrapper)
-- [ ] Git worktree isolation per generation
-- [ ] Parallel consensus evaluation (multi-perspective)
-- [ ] Lateral thinking on stagnation
+- [ ] Real semantic evaluation (Kimi Code evaluates its own plan)
+- [ ] Interactive interview loop (pause for user answers mid-planning)
+- [ ] Web research integration (WebSearch results fed into Plan)
+- [ ] Parallel consensus evaluation (multi-perspective plan review)
+- [ ] Lateral thinking on stagnation (break out of local maxima)
 
 ---
 
