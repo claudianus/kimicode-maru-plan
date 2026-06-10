@@ -52,8 +52,8 @@ export function runPostEvaluationGate(plan: Plan, seed: Seed): GateResult {
 export function runConsensusGate(personaVerdicts: PersonaVerdict[]): GateResult {
   const violations: string[] = [];
   for (const pv of personaVerdicts) {
-    if (pv.score < 0.4) {
-      violations.push(`${pv.persona} score ${pv.score.toFixed(2)} is below minimum threshold (0.4)`);
+    if (pv.score < 0.75) {
+      violations.push(`${pv.persona} score ${pv.score.toFixed(2)} is below minimum threshold (0.75)`);
     }
   }
   return { passed: violations.length === 0, gateName: 'Consensus', violations };

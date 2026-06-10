@@ -831,8 +831,22 @@ function deriveMissingResearch(
 export function evaluatePlan(plan: Plan, seed: Seed): PlanVerdict {
   const ambiguity = scoreAmbiguity(plan);
   const completeness = scoreCompleteness(plan, seed);
-  const feasibility = scoreFeasibility(plan);
+  let feasibility = scoreFeasibility(plan);
   const goalAlignment = scoreGoalAlignment(plan, seed);
+
+  // Budget/scope mismatch check
+  const scopeWords = ["enterprise", "comprehensive", "microservices", "ai-powered", "blockchain", "real-time"];
+  const restrictionPatterns = ["under $", "under 1 day", "1 week", "junior dev"];
+  const goalLower = plan.goal.toLowerCase();
+  const constraintsText = seed.constraints.join(" ").toLowerCase();
+  const matchedScope = scopeWords.filter((w) => goalLower.includes(w));
+  const matchedRestrictions = restrictionPatterns.filter((r) => constraintsText.includes(r));
+  let mismatchFeedback = "";
+  if (matchedScope.length > 0 && matchedRestrictions.length > 0) {
+    const penalty = Math.min(matchedScope.length * 0.1 + matchedRestrictions.length * 0.05, 0.3);
+    feasibility = Math.max(0, feasibility - penalty);
+    mismatchFeedback = `Budget/scope mismatch detected: ambitious scope words (${matchedScope.join(", ")}) vs tight constraints (${matchedRestrictions.join(", ")}).`;
+  }
 
   // Weighted composite — completeness weighted highest because a complete
   // but slightly ambiguous plan is more actionable than an ambiguous plan
@@ -850,7 +864,10 @@ export function evaluatePlan(plan: Plan, seed: Seed): PlanVerdict {
     feasibility >= PASS_PER_DIMENSION &&
     goalAlignment >= PASS_PER_DIMENSION;
 
-  const feedback = buildFeedback(ambiguity, completeness, feasibility, goalAlignment);
+  let feedback = buildFeedback(ambiguity, completeness, feasibility, goalAlignment);
+  if (mismatchFeedback) {
+    feedback = mismatchFeedback + "\n\n" + feedback;
+  }
   const missingQuestions = deriveMissingQuestions(plan, seed, ambiguity, completeness, feasibility, goalAlignment);
   const missingResearch = deriveMissingResearch(plan, seed, ambiguity, completeness, feasibility);
 

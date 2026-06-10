@@ -262,6 +262,35 @@ function lookupKnowledgeBase(query: string): Partial<ResearchItem> | null {
   return null;
 }
 
+/** Generic / broad concepts that do NOT trigger the unknown-tech warning. */
+const GENERIC_TERMS = new Set([
+  'performance',
+  'testing',
+  'security',
+  'deployment',
+  'optimization',
+  'scalability',
+  'maintenance',
+  'monitoring',
+  'logging',
+  'documentation',
+  'refactoring',
+  'integration',
+  'automation',
+  'best practices',
+  'guidelines',
+  'standards',
+  'overview',
+  'comparison',
+]);
+
+function isGenericTerm(query: string): boolean {
+  const normalized = normalizeQuery(query);
+  if (GENERIC_TERMS.has(normalized)) return true;
+  const firstToken = normalized.split(' ')[0];
+  return firstToken ? GENERIC_TERMS.has(firstToken) : false;
+}
+
 // ───────────────────────────────────────────────
 // Query Classification & Priority System
 // ───────────────────────────────────────────────
@@ -759,6 +788,17 @@ export async function conductResearch(queries: string[]): Promise<ResearchItem[]
         query: cq.query,
         summary: kbEntry.summary ?? '',
         source: kbEntry.source,
+      };
+    }
+
+    // Unknown technology detection: if it's not in the KB and not a generic
+    // concept, warn that it's unverified.
+    if (!isGenericTerm(cq.query)) {
+      return {
+        id: `r-${index + 1}`,
+        query: cq.query,
+        summary: `Unknown technology: ${cq.query}. No established best-practice data available. Consider verifying community maturity before adoption.`,
+        source: undefined,
       };
     }
 

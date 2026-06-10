@@ -8,7 +8,7 @@ export function aggregateVerdicts(
     personaVerdicts.reduce((sum, pv) => sum + pv.score, 0) /
     personaVerdicts.length;
 
-  const anyBelowThreshold = personaVerdicts.some((pv) => pv.score < 0.4);
+  const anyBelowThreshold = personaVerdicts.some((pv) => pv.score < 0.75);
   const passed = baseVerdict.passed && !anyBelowThreshold;
 
   const disagreements: string[] = [];
