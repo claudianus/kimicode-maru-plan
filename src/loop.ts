@@ -1,3 +1,23 @@
+/**
+ * Orchestrates the kimi-harness planning loop.
+ *
+ * This module defines a **role** for Kimi Code to perform. Kimi Code executes
+ * this role by driving the full planning lifecycle: generating a Plan, evaluating
+ * it, and iteratively refining it through interviews and research.
+ *
+ * Loop flow:
+ * 1. Planner (`planner.ts`) generates an initial Plan.
+ * 2. Evaluator (`plan-evaluator.ts`) scores the Plan for ambiguity, completeness,
+ *    feasibility, and alignment.
+ * 3. If the score is insufficient, the loop continues:
+ *    - Interviewer (`interviewer.ts`) — Kimi Code asks the user clarifying
+ *      questions via `AskUserQuestion`.
+ *    - Researcher (`researcher.ts`) — Kimi Code searches the web via `WebSearch`.
+ *    - Refiner (`plan-refiner.ts`) — Kimi Code synthesizes feedback into an
+ *      updated Plan.
+ * 4. The loop repeats until the Plan passes or `maxGenerations` is reached.
+ */
+
 import type { Seed, LoopOptions, Plan, PlanVerdict, InterviewQA, ResearchItem } from './types.js';
 import { generatePlan } from './planner.js';
 import { evaluatePlan } from './plan-evaluator.js';
@@ -13,7 +33,10 @@ function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] 
 /**
  * Run the planning harness loop.
  *
- * Plan → Evaluate → Refine → repeat until pass or max generations.
+ * Kimi Code performs this role by executing the generation loop:
+ * generate a Plan, evaluate it, conduct interviews (AskUserQuestion) and
+ * research (WebSearch) as needed, refine the Plan, and repeat until the
+ * Plan passes or `maxGenerations` is reached.
  */
 export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   const maxGenerations = options.maxGenerations ?? seed.maxGenerations ?? 5;
