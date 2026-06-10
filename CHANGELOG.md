@@ -4,8 +4,8 @@
 
 - Initial release
 - Rule-based planning harness with no external API dependencies
-- CLI: `kimi-harness seed.yaml` → `plan.yaml`
-- Library API: `import { runLoop, parseSeed } from 'kimi-harness'`
+- CLI: `maru-plan seed.yaml` → `plan.yaml`
+- Library API: `import { runLoop, parseSeed } from 'kimicode-maru-plan'`
 - 5 core modules:
   - `planner` — template-based Plan synthesis from seed + interviews + research
   - `plan-evaluator` — 4-dimension scoring rubric (ambiguity, completeness, feasibility, alignment)

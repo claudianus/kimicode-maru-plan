@@ -1,4 +1,4 @@
-# kimi-harness — AGENTS.md
+# kimicode-maru-plan — AGENTS.md
 
 > Planning harness for Kimi Code. Bun + TypeScript.
 >

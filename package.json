@@ -1,19 +1,20 @@
 {
-  "name": "kimi-harness",
-  "version": "0.1.0",
-  "description": "Planning harness — turn vague ideas into concrete, actionable plans",
+  "name": "kimicode-maru-plan",
+  "version": "0.2.0",
+  "description": "Ouroboros-grade planning mode for Kimi Code — maru-plan",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
   "type": "module",
   "bin": {
-    "kimi-harness": "dist/cli.js"
+    "maru-plan": "dist/cli.js"
   },
   "files": [
     "dist",
     "src",
     "docs",
-    "SKILL.md",
+    "skills",
+    "kimi.plugin.json",
     "README.md",
     "LICENSE"
   ],
@@ -30,7 +31,9 @@
     "cli",
     "planning",
     "harness",
-    "kimi-code"
+    "kimi-code",
+    "maru-plan",
+    "plugin"
   ],
   "license": "MIT",
   "engines": {

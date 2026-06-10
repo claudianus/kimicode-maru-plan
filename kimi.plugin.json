@@ -1,0 +1,18 @@
+{
+  "name": "kimicode-maru-plan",
+  "version": "0.2.0",
+  "description": "Ouroboros-grade planning mode for Kimi Code — multi-persona consensus, generational memory, meta-evolution, and hard quality gates",
+  "license": "MIT",
+  "skills": "./skills/",
+  "sessionStart": {
+    "skill": "maru-plan"
+  },
+  "skillInstructions": "When the user is planning, building, designing, or asking 'how to' do something, activate the maru-plan 6-phase loop: (1) Planner synthesizes a concrete plan from the user's goal, constraints, and non-goals. (2) Four independent personas (Developer, PM, Security, UX) evaluate the plan in parallel. (3) Hard gates block any plan that violates structural or consensus rules. (4) The Interviewer asks clarifying questions for gaps. (5) The Researcher validates assumptions with web search. (6) The Refiner improves the plan using generational memory and meta-evolution. Repeat until consensus score >= 0.85 and all gates pass. Never skip evaluation or gates. Use AskUserQuestion for P0/P1 interview questions. Use WebSearch for technology validation.",
+  "interface": {
+    "displayName": "maru-plan",
+    "shortDescription": "Ouroboros-grade planning mode for Kimi Code",
+    "longDescription": "maru-plan replaces ad-hoc planning with a 6-phase, evidence-based loop that exceeds Ouroboros-level quality. It runs multi-persona consensus evaluation (Developer, PM, Security, UX), hard quality gates, memory-aware interviews, web research validation, and meta-evolutionary refinement — all automatically inside Kimi Code conversations.",
+    "developerName": "kimicode-maru-plan contributors",
+    "websiteURL": "https://github.com/user/kimicode-maru-plan"
+  }
+}

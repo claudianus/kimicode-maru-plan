@@ -1,27 +1,29 @@
 ---
-name: Enhanced Planning Harness
-id: kimi-harness
+name: maru-plan
+id: maru-plan
 description: >
-  Turn vague ideas into concrete, actionable plans through iterative
-  interview, research, planning, evaluation, and refinement.
+  Ouroboros-grade planning mode for Kimi Code.
+  Turn vague ideas into concrete, actionable plans through a 6-phase loop:
+  Planner → Multi-Persona Evaluation → Hard Gates → Interview → Research → Refiner.
   Features multi-persona consensus evaluation, generational memory,
   meta-evolution of rubrics, lateral thinking, and hard quality gates.
-  Replaces or enhances the default planning mode with structured
-  multi-dimensional scoring and evidence-based refinement.
+  Automatically activates when planning, building, or designing anything.
 triggers:
   - When the user says "plan", "planning", "how to", "how should I", "what's the best way to"
+  - When the user says "build", "create", "make", "design", "architect"
+  - When the user says "I want to build", "I want to create", "I want to make", "let's build"
+  - When the user asks for a roadmap, timeline, execution strategy, or project plan
   - When the user has a vague idea and needs concrete steps
-  - When the user asks for a roadmap, timeline, or execution strategy
   - Before starting a complex multi-step task
-  - When the user says "I want to build", "I want to create", "I want to make"
   - When the default plan mode feels insufficient or too vague
+  - When the user enters Plan mode (Shift-Tab or /plan)
 ---
 
-# Enhanced Planning Harness
+# maru-plan — Ouroboros-grade Planning Mode
 
 ## Overview
 
-This harness replaces ad-hoc planning with a **6-phase, evidence-based loop** that exceeds Ouroboros-level quality.
+maru-plan replaces ad-hoc planning with a **6-phase, evidence-based loop** that exceeds Ouroboros-level quality. It integrates deeply with Kimi Code through skills, hooks, and plugins.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -40,22 +42,33 @@ Each iteration improves the plan until it meets quality thresholds (composite sc
 
 ## Installation
 
+**One-line install (npm):**
 ```bash
-npm install -g kimi-harness
-kimi-harness setup
+npm install -g kimicode-maru-plan && maru-plan setup
 ```
 
-This copies the skill into `~/.kimi-code/skills/kimi-harness/` so Kimi Code can load it automatically.
+**One-line install (project-local):**
+```bash
+npx kimicode-maru-plan init
+```
+
+**One-line install (Kimi plugin):**
+```bash
+kimi plugin install https://github.com/user/kimicode-maru-plan.git
+```
 
 ## How to Use (In Conversation)
 
-No manual file editing required. When this skill is active, simply **talk to Kimi Code as usual**.
+No manual file editing required. maru-plan activates automatically when you:
+- Enter Plan mode (`Shift-Tab` or `/plan`)
+- Ask planning-related questions
+- Use the `/maru-plan` command explicitly
 
 **Example:**
 
 > **User:** "블로그 만들고 싶어. Astro 쓰고 싶은데 배포는 어디로 해야 할지 모르겠어."
 >
-> **Kimi Code (harness activated):**
+> **Kimi Code (maru-plan activated):**
 > 1. **Planner:** Plan 초안 작성 (Astro 블로그 템플릿)
 > 2. **Evaluators:**
 >    - Developer: 0.92 ✅ (구현 가능)
@@ -207,5 +220,5 @@ research:
 ## Uninstall
 
 ```bash
-kimi-harness uninstall
+maru-plan uninstall
 ```

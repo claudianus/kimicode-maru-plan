@@ -1,27 +1,37 @@
-# 🐍 kimi-harness
+# 🐍 maru-plan
 
-> **Enhanced Planning Mode for Kimi Code**
+> **Ouroboros-grade Planning Mode for Kimi Code**
 >
 > Turn vague ideas into concrete, actionable plans — automatically, inside your Kimi Code conversations.
-> Multi-persona consensus. Generational memory. Meta-evolution. Hard gates. Ouroboros-grade.
+> Multi-persona consensus. Generational memory. Meta-evolution. Hard gates.
 
-[![npm version](https://img.shields.io/npm/v/kimi-harness.svg)](https://www.npmjs.com/package/kimi-harness)
+[![npm version](https://img.shields.io/npm/v/kimicode-maru-plan.svg)](https://www.npmjs.com/package/kimicode-maru-plan)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Kimi Code's default planning mode is good. This makes it **great**.
+Kimi Code's default planning mode is good. **maru-plan makes it great.**
 
 Install once. After that, every time you start a vague project idea in Kimi Code, it automatically runs a 6-phase loop: **Planner → Multi-Persona Evaluation → Hard Gates → Interview → Research → Refiner** — until your plan is solid.
 
 ---
 
-## Install (One-Time)
+## Install (One-Line)
 
+**Option A — npm (recommended):**
 ```bash
-npm install -g kimi-harness
-kimi-harness setup
+npm install -g kimicode-maru-plan && maru-plan setup
 ```
 
-This copies the skill into `~/.kimi-code/skills/kimi-harness/`. Kimi Code picks it up automatically.
+**Option B — project-local:**
+```bash
+npx kimicode-maru-plan init
+```
+
+**Option C — Kimi Code Plugin:**
+```bash
+kimi plugin install https://github.com/user/kimicode-maru-plan.git
+```
+
+> See [INSTALL.md](docs/INSTALL.md) for detailed steps and troubleshooting.
 
 ---
 
@@ -32,7 +42,7 @@ No files. No commands. Just talk to Kimi Code as usual.
 ```
 > "블로그 만들고 싶어. Astro 쓰고 싶은데 배포는 어디로 해야 할지 모르겠어."
 
-Kimi Code (auto-activated):
+Kimi Code (maru-plan auto-activated):
   1. Planner:     Plan 초안 작성
   2. Evaluators:  Developer 0.92 ✅ | PM 0.88 ✅ | Security 0.95 ✅ | UX 0.70 ❌
                   → Consensus FAILED (UX < 0.75 threshold)
@@ -45,7 +55,13 @@ Kimi Code (auto-activated):
   9. 최종 Plan 제시
 ```
 
-**Auto-triggers:** "plan", "how to", "I want to build", "roadmap", "what's the best way to"...
+**Auto-triggers:** `plan`, `build`, `how to`, `I want to build`, `roadmap`, `design`, `create`, `make`...
+
+**Explicit command:** `/maru-plan "내가 만들고 싶은 것..."`
+
+**CLI wrapper:** `maru-plan` (starts `kimi --plan` with maru-plan skill loaded)
+
+> See [USAGE.md](docs/USAGE.md) for all 4 usage modes.
 
 ---
 
@@ -96,6 +112,32 @@ Final Plan (score ≥ 0.85, all gates pass)
 
 ---
 
+## Integration Layers
+
+maru-plan integrates with Kimi Code at three levels:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 1: Kimi Code Plugin                                   │
+│   • Install: kimi plugin install <repo>                     │
+│   • Auto-loads skill on every session via sessionStart      │
+│   • Managed through /plugins in TUI                         │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: npm CLI + Auto-Setup                               │
+│   • Install: npm install -g kimicode-maru-plan              │
+│   • maru-plan setup → skill + hooks + config.toml           │
+│   • maru-plan init  → project-local skill copy              │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: Hook Interception (deepest)                        │
+│   • UserPromptSubmit hook detects planning intent           │
+│   • Injects 6-phase instructions via additionalContext      │
+│   • PreToolUse hook runs gate checks before execution       │
+│   • Stop hook records generation memory                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## What You Get
 
 A concrete `Plan` with:
@@ -123,7 +165,7 @@ maxGenerations: 5
 EOF
 
 # Run
-kimi-harness seed.yaml --cwd=./my-project
+maru-plan seed.yaml --cwd=./my-project
 # → generates ./my-project/plan.yaml
 ```
 
@@ -155,7 +197,7 @@ maxGenerations: 5   # Loop limit (default: 5)
 ## Programmatic API
 
 ```typescript
-import { parseSeed, runLoop } from 'kimi-harness';
+import { parseSeed, runLoop } from 'kimicode-maru-plan';
 
 const seed = parseSeed('./seed.yaml');
 const plan = await runLoop(seed, { cwd: './my-project', maxGenerations: 5 });
@@ -183,67 +225,49 @@ Run your own: `bun run tests/benchmark/run-benchmark.ts`
 ## Project Structure
 
 ```
-src/
-├── types.ts              # Seed, Plan, PlanVerdict, PersonaVerdict, ConsensusVerdict, GenerationMemory
-├── parser.ts             # YAML seed → typed Seed
-├── planner.ts            # Rule-based Plan synthesis (templates: web/api/cli/mobile)
-├── plan-evaluator.ts     # 4-dimension scoring rubric + budget/scope realism
-├── plan-refiner.ts       # Score-driven refinement + memory-aware strategy
-├── interviewer.ts        # Gap-driven question generation (memory-aware)
-├── researcher.ts         # Tech knowledge base (24 terms) + unknown tech warnings
-├── loop.ts               # Orchestrates the 6-phase planning loop
-├── cli.ts                # CLI entrypoint (setup / uninstall / batch)
-├── index.ts              # Library exports
-├── gates.ts              # Pre / Post / Consensus hard gates
-├── memory.ts             # Generational memory archive + drift detection
-├── evaluators/           # 4 persona evaluators + consensus aggregator
-│   ├── developer.ts
-│   ├── pm.ts
-│   ├── security.ts
-│   ├── ux.ts
-│   ├── aggregator.ts
-│   └── index.ts
-├── meta/                 # Meta-evolution (self-improving rubrics & prompts)
-│   ├── rubric-evolver.ts
-│   ├── prompt-evolver.ts
-│   └── index.ts
-└── exploration/          # Lateral thinking + branch management
-    ├── lateral-thinker.ts
-    ├── branch-manager.ts
-    └── index.ts
-
-tests/
-├── benchmark/            # Automated benchmark suite
-│   ├── seed-corpus.ts
-│   ├── scoring.ts
-│   └── run-benchmark.ts
-├── gates.test.ts         # 22 tests
-├── memory.test.ts        # 16 tests
-├── evaluators.test.ts    # 25 tests
-├── exploration.test.ts   # 20 tests
-└── meta.test.ts          # 22 tests
+kimicode-maru-plan/
+├── kimi.plugin.json          # Kimi Code Plugin manifest
+├── package.json              # npm package
+├── skills/
+│   └── maru-plan/
+│       └── SKILL.md          # Kimi Code Skill definition
+├── src/
+│   ├── cli.ts                # maru-plan CLI (setup/init/mcp/batch)
+│   ├── config-manager.ts     # ~/.kimi-code/config.toml manipulation
+│   ├── hooks/                # Kimi Code lifecycle hooks
+│   │   ├── index.ts          # Hook router (JSON stdio)
+│   │   ├── session-start.ts
+│   │   ├── user-prompt-submit.ts
+│   │   ├── pre-tool-use.ts
+│   │   └── stop.ts
+│   ├── types.ts              # Seed, Plan, PlanVerdict, PersonaVerdict, ConsensusVerdict, GenerationMemory
+│   ├── parser.ts             # YAML seed → typed Seed
+│   ├── planner.ts            # Rule-based Plan synthesis
+│   ├── plan-evaluator.ts     # 4-dimension scoring rubric
+│   ├── plan-refiner.ts       # Score-driven refinement
+│   ├── interviewer.ts        # Gap-driven question generation
+│   ├── researcher.ts         # Tech knowledge base
+│   ├── loop.ts               # Orchestrates the 6-phase loop
+│   ├── index.ts              # Library exports
+│   ├── gates.ts              # Pre / Post / Consensus hard gates
+│   ├── memory.ts             # Generational memory archive + drift detection
+│   ├── evaluators/           # 4 persona evaluators + consensus aggregator
+│   ├── meta/                 # Meta-evolution
+│   └── exploration/          # Lateral thinking + branch management
+├── tests/                    # 105 unit tests
+├── docs/
+│   ├── INSTALL.md
+│   ├── USAGE.md
+│   └── examples/
+└── README.md
 ```
-
----
-
-## Roadmap
-
-- [x] Multi-persona consensus evaluation (Developer / PM / Security / UX)
-- [x] Generational memory & drift prevention
-- [x] Meta-evolution of rubrics and prompts
-- [x] Lateral thinking on stagnation
-- [x] Hard quality gates (pre / post / consensus)
-- [x] Benchmark suite with automated scoring
-- [ ] LLM-augmented planner adapter (OpenAI / Anthropic)
-- [ ] Interactive interview mode (pause for user input mid-loop)
-- [ ] Web research adapter (Serper / Tavily)
 
 ---
 
 ## Uninstall
 
 ```bash
-kimi-harness uninstall
+maru-plan uninstall
 ```
 
 ---

@@ -1,5 +1,5 @@
 /**
- * Orchestrates the kimi-harness planning loop.
+ * Orchestrates the maru-plan planning loop.
  *
  * This module defines a **role** for Kimi Code to perform. Kimi Code executes
  * this role by driving the full planning lifecycle: generating a Plan, evaluating
@@ -47,7 +47,7 @@ function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] 
 export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   const maxGenerations = options.maxGenerations ?? seed.maxGenerations ?? 5;
 
-  console.log(`🐍 kimi-harness start`);
+  console.log(`🐍 maru-plan start`);
   console.log(`   Goal: ${seed.goal}`);
   console.log(`   Max generations: ${maxGenerations}`);
   console.log(`   CWD: ${options.cwd}`);

@@ -1,5 +1,5 @@
 /**
- * Core types for kimi-harness — a planner harness for Kimi Code.
+ * Core types for kimicode-maru-plan — Ouroboros-grade planning mode for Kimi Code.
  *
  * Purpose: Turn vague user ideas into concrete, actionable plans
  * through interviews, research, and iterative refinement.
