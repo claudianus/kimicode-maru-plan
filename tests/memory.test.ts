@@ -59,8 +59,8 @@ test('recordGeneration pushes a memory into the archive', () => {
   recordGeneration(archive, 1, plan, makeVerdict(), ['s1'], ['f1'], ['i1'], ['d1']);
 
   expect(archive.memories).toHaveLength(1);
-  expect(archive.memories[0].generation).toBe(1);
-  expect(archive.memories[0].strategiesAttempted).toEqual(['s1']);
+  expect(archive.memories[0]!.generation).toBe(1);
+  expect(archive.memories[0]!.strategiesAttempted).toEqual(['s1']);
 });
 
 test('recordGeneration does not summarize when memories <= 5', () => {
@@ -149,8 +149,8 @@ test('getLastMemories returns the last n memories', () => {
 
   const last2 = getLastMemories(archive, 2);
   expect(last2).toHaveLength(2);
-  expect(last2[0].generation).toBe(4);
-  expect(last2[1].generation).toBe(5);
+  expect(last2[0]!.generation).toBe(4);
+  expect(last2[1]!.generation).toBe(5);
 });
 
 test('getLastMemories returns all memories when n exceeds length', () => {
