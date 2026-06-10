@@ -24,7 +24,8 @@
     "build:types": "tsc -p tsconfig.build.json",
     "build:lib": "bun build src/index.ts --outfile=dist/index.js --target=node",
     "build:cli": "bun build src/cli.ts --outfile=dist/cli.js --target=node",
-    "build": "bun run build:types && bun run build:lib && bun run build:cli"
+    "build:hooks": "bun build src/hooks/index.ts --outfile=dist/hooks/index.js --target=node",
+    "build": "bun run build:types && bun run build:lib && bun run build:cli && bun run build:hooks"
   },
   "keywords": [
     "planner",

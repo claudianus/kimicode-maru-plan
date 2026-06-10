@@ -101,7 +101,9 @@ if (command === 'setup') {
   console.log(`   Hooks removed from ~/.kimi-code/config.toml`);
   process.exit(0);
 } else if (command === 'hook') {
-  const hookPath = join(PKG_ROOT, 'dist', 'hooks', 'index.js');
+  const distHook = join(PKG_ROOT, 'dist', 'hooks', 'index.js');
+  const srcHook = join(PKG_ROOT, 'src', 'hooks', 'index.ts');
+  const hookPath = existsSync(distHook) ? distHook : srcHook;
   if (existsSync(hookPath)) {
     const hook = spawn('bun', [hookPath], {
       stdio: ['inherit', 'inherit', 'inherit'],
