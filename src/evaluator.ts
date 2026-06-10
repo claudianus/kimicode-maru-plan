@@ -3,6 +3,8 @@ import { runCommand } from './executor.js';
 
 export interface EvaluatorOptions {
   cwd: string;
+  /** If set, run mechanical checks inside this path. */
+  worktreePath?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ async function evaluateMechanical(
   seed: Seed,
   options: EvaluatorOptions
 ): Promise<MechanicalResult> {
+  const targetCwd = options.worktreePath ?? options.cwd;
   let buildPassed = true;
   let testsPassed = true;
   let lintPassed = true;
@@ -46,15 +49,15 @@ async function evaluateMechanical(
 
   for (const ac of seed.acceptanceCriteria) {
     if (ac.verificationMethod === 'build') {
-      const result = runCommand('bun run build', options.cwd);
+      const result = runCommand('bun run build', targetCwd);
       buildPassed = result.exitCode === 0;
       acResults.push({ acId: ac.id, passed: buildPassed, detail: result.stderr || result.stdout });
     } else if (ac.verificationMethod === 'test') {
-      const result = runCommand('bun test', options.cwd);
+      const result = runCommand('bun test', targetCwd);
       testsPassed = result.exitCode === 0;
       acResults.push({ acId: ac.id, passed: testsPassed, detail: result.stderr || result.stdout });
     } else if (ac.verificationMethod === 'lint') {
-      const result = runCommand('bun run lint', options.cwd);
+      const result = runCommand('bun run lint', targetCwd);
       lintPassed = result.exitCode === 0;
       acResults.push({ acId: ac.id, passed: lintPassed, detail: result.stderr || result.stdout });
     } else {
