@@ -27,7 +27,8 @@
  * - goalAlignment 0.9 → Seed: "landing page", Plan: "Astro marketing site"
  */
 
-import type { Plan, PlanVerdict, PlanEvolution, PlanStep } from "./types.js";
+import type { Plan, PlanVerdict, PlanEvolution, PlanStep, MemoryArchive } from "./types.js";
+import { getLastMemories } from './memory.js';
 
 // ───────────────────────────────────────────────
 // Thresholds & rubrics
@@ -580,6 +581,7 @@ function synthesizeQuestions(
   plan: Plan,
   verdict: PlanVerdict,
   strategies: DimensionStrategy[],
+  archive?: MemoryArchive,
 ): string[] {
   const questions: string[] = [...verdict.missingQuestions];
 
@@ -656,6 +658,18 @@ function synthesizeQuestions(
           add("Some steps feel tangential to the core goal. Should they be moved to a future phase?");
         }
         break;
+      }
+    }
+  }
+
+  if (archive) {
+    const last3 = getLastMemories(archive, 3);
+    for (const mem of last3) {
+      if (mem.failures.length > 0) {
+        add(`Previous attempt (gen ${mem.generation}) failed because: ${mem.failures.join('; ')}. We will try a different approach.`);
+      }
+      if (mem.discardedIdeas.length > 0) {
+        add(`Previous attempt (gen ${mem.generation}) discarded these ideas: ${mem.discardedIdeas.join(', ')}. Do not reintroduce them.`);
       }
     }
   }
@@ -769,7 +783,7 @@ function synthesizeResearch(
  * @param verdict — evaluation result with feedback / missing items.
  * @returns PlanEvolution — updated plan + follow-up questions & research.
  */
-export function refinePlan(plan: Plan, verdict: PlanVerdict): PlanEvolution {
+export async function refinePlan(plan: Plan, verdict: PlanVerdict, archive?: MemoryArchive): Promise<PlanEvolution> {
   // Step 1 & 2: classify and rank dimensions.
   const strategies = rankStrategies(verdict);
   const topStrategy = strategies[0];
@@ -832,8 +846,36 @@ export function refinePlan(plan: Plan, verdict: PlanVerdict): PlanEvolution {
   }
 
   // Step 4 & 5: synthesize questions and research.
-  const interviewQuestions = synthesizeQuestions(updatedPlan, verdict, strategies);
+  const interviewQuestions = synthesizeQuestions(updatedPlan, verdict, strategies, archive);
   const researchQueries = synthesizeResearch(updatedPlan, verdict, strategies);
+
+  // Warn if previously discarded ideas are reintroduced
+  if (archive) {
+    const recentDiscarded = new Set(
+      getLastMemories(archive, 3).flatMap(m => m.discardedIdeas)
+    );
+    for (const idea of recentDiscarded) {
+      const ideaLower = idea.toLowerCase();
+      for (const step of updatedPlan.steps) {
+        const descLower = step.description.toLowerCase();
+        if (descLower.includes(ideaLower) || ideaLower.includes(descLower)) {
+          console.warn(`⚠️ Warning: Previously discarded idea "${idea}" may be reintroduced in step: ${step.description}`);
+        }
+      }
+      for (const assumption of updatedPlan.assumptions) {
+        const assLower = assumption.toLowerCase();
+        if (assLower.includes(ideaLower) || ideaLower.includes(assLower)) {
+          console.warn(`⚠️ Warning: Previously discarded idea "${idea}" may be reintroduced in assumption: ${assumption}`);
+        }
+      }
+      for (const risk of updatedPlan.risks) {
+        const riskLower = risk.toLowerCase();
+        if (riskLower.includes(ideaLower) || ideaLower.includes(riskLower)) {
+          console.warn(`⚠️ Warning: Previously discarded idea "${idea}" may be reintroduced in risk: ${risk}`);
+        }
+      }
+    }
+  }
 
   return {
     updatedPlan,
