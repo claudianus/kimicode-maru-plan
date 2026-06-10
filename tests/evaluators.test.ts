@@ -6,7 +6,15 @@ import {
   evaluateAsUX,
   aggregateVerdicts,
 } from "../src/evaluators/index.js";
-import type { Plan, Seed, PlanVerdict, PersonaVerdict } from "../src/types.js";
+import type { Plan, PlanStep, Seed, PlanVerdict, PersonaVerdict } from "../src/types.js";
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function getStep(plan: Plan, index: number): PlanStep {
+  const s = plan.steps[index];
+  if (!s) throw new Error(`Step ${index} missing in fixture`);
+  return s;
+}
 
 // ─── Fixtures ─────────────────────────────────────────────────────────
 
@@ -84,9 +92,9 @@ test("evaluateAsDeveloper: good plan passes with high score", () => {
 
 test("evaluateAsDeveloper: >50% missing verificationMethod is blocking", () => {
   const plan = makeGoodPlan();
-  plan.steps[0].verificationMethod = "";
-  plan.steps[1].verificationMethod = "  ";
-  plan.steps[2].verificationMethod = undefined;
+  getStep(plan, 0).verificationMethod = "";
+  getStep(plan, 1).verificationMethod = "  ";
+  getStep(plan, 2).verificationMethod = undefined;
   // 3/5 missing = 60% > 50%
   const verdict = evaluateAsDeveloper(plan, makeGoodSeed());
   expect(verdict.passed).toBe(false);
@@ -97,7 +105,7 @@ test("evaluateAsDeveloper: >50% missing verificationMethod is blocking", () => {
 
 test("evaluateAsDeveloper: single step effort exceeding 80h is blocking", () => {
   const plan = makeGoodPlan();
-  plan.steps[0].estimatedEffort = "3 month";
+  getStep(plan, 0).estimatedEffort = "3 month";
   const verdict = evaluateAsDeveloper(plan, makeGoodSeed());
   expect(verdict.passed).toBe(false);
   expect(verdict.blockingIssues.some((b) => b.includes("exceeds 2 weeks"))).toBe(
@@ -107,8 +115,8 @@ test("evaluateAsDeveloper: single step effort exceeding 80h is blocking", () => 
 
 test("evaluateAsDeveloper: dependency cycle is blocking", () => {
   const plan = makeGoodPlan();
-  plan.steps[0].dependsOn = ["s2"];
-  plan.steps[1].dependsOn = ["s1"];
+  getStep(plan, 0).dependsOn = ["s2"];
+  getStep(plan, 1).dependsOn = ["s1"];
   const verdict = evaluateAsDeveloper(plan, makeGoodSeed());
   expect(verdict.passed).toBe(false);
   expect(verdict.blockingIssues).toContain(
@@ -118,7 +126,7 @@ test("evaluateAsDeveloper: dependency cycle is blocking", () => {
 
 test("evaluateAsDeveloper: self-loop is blocking", () => {
   const plan = makeGoodPlan();
-  plan.steps[0].dependsOn = ["s1"];
+  getStep(plan, 0).dependsOn = ["s1"];
   const verdict = evaluateAsDeveloper(plan, makeGoodSeed());
   expect(verdict.passed).toBe(false);
   expect(verdict.blockingIssues).toContain(
@@ -128,7 +136,7 @@ test("evaluateAsDeveloper: self-loop is blocking", () => {
 
 test("evaluateAsDeveloper: unparseable estimatedEffort is blocking", () => {
   const plan = makeGoodPlan();
-  plan.steps[0].estimatedEffort = "a while";
+  getStep(plan, 0).estimatedEffort = "a while";
   const verdict = evaluateAsDeveloper(plan, makeGoodSeed());
   expect(verdict.passed).toBe(false);
   expect(verdict.blockingIssues).toContain(
@@ -202,7 +210,10 @@ test("evaluateAsPM: complex goal with fewer than 3 steps is blocking", () => {
   const plan = makeGoodPlan();
   plan.goal =
     "Build a comprehensive enterprise SaaS platform with real-time analytics and AI powered insights";
-  plan.steps = [plan.steps[0], plan.steps[1]]; // 2 steps
+  const s0 = plan.steps[0];
+  const s1 = plan.steps[1];
+  if (!s0 || !s1) throw new Error("Fixture malformed");
+  plan.steps = [s0, s1]; // 2 steps
   const seed: Seed = {
     goal: plan.goal,
     constraints: ["Use Astro v4.2"],
@@ -253,7 +264,7 @@ test("evaluateAsSecurity: missing security step despite covered constraint is bl
   const seed = makeGoodSeed();
   seed.constraints = ["Must use encryption for data at rest"];
   // "encryption" covers the constraint in the first check but is not in the security-step regex
-  plan.steps[0].description =
+  getStep(plan, 0).description =
     "Initialize Astro v4.2 project with TypeScript and encryption support";
   const verdict = evaluateAsSecurity(plan, seed);
   expect(verdict.passed).toBe(false);
