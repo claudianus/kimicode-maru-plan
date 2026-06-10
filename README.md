@@ -16,19 +16,24 @@ Install once. After that, every time you start a vague project idea in Kimi Code
 
 ## Install (One-Line)
 
-**Option A — npm (recommended):**
+**Option A — curl | bash (recommended, no npm needed):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/claudianus/kimicode-maru-plan/main/install.sh | bash
+```
+
+**Option B — npm:**
 ```bash
 npm install -g kimicode-maru-plan && maru-plan setup
 ```
 
-**Option B — project-local:**
+**Option C — project-local:**
 ```bash
 npx kimicode-maru-plan init
 ```
 
-**Option C — Kimi Code Plugin:**
+**Option D — Kimi Code Plugin:**
 ```bash
-kimi plugin install https://github.com/user/kimicode-maru-plan.git
+kimi plugin install https://github.com/claudianus/kimicode-maru-plan.git
 ```
 
 > See [INSTALL.md](docs/INSTALL.md) for detailed steps and troubleshooting.

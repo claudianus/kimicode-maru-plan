@@ -13,6 +13,6 @@
     "shortDescription": "Ouroboros-grade planning mode for Kimi Code",
     "longDescription": "maru-plan replaces ad-hoc planning with a 6-phase, evidence-based loop that exceeds Ouroboros-level quality. It runs multi-persona consensus evaluation (Developer, PM, Security, UX), hard quality gates, memory-aware interviews, web research validation, and meta-evolutionary refinement — all automatically inside Kimi Code conversations.",
     "developerName": "kimicode-maru-plan contributors",
-    "websiteURL": "https://github.com/user/kimicode-maru-plan"
+    "websiteURL": "https://github.com/claudianus/kimicode-maru-plan"
   }
 }

@@ -1,10 +1,27 @@
 # Install maru-plan
 
-> Three ways to install. Pick one.
+> Four ways to install. Pick one.
 
 ---
 
-## Method A: npm + Auto-Setup (Recommended)
+## Method A: curl | bash (Recommended, no npm needed)
+
+Requires: Git, Kimi Code CLI installed. Bun will be auto-installed if missing.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/claudianus/kimicode-maru-plan/main/install.sh | bash
+```
+
+**What the installer does:**
+1. Installs Bun if not present
+2. Clones repo to `~/.kimicode-maru-plan/`
+3. Builds the project
+4. Links `maru-plan` binary to `~/.local/bin/`
+5. Runs `maru-plan setup` (skill + hooks + config.toml)
+
+---
+
+## Method B: npm + Auto-Setup
 
 Requires: Node.js ≥ 18, Kimi Code CLI installed.
 
@@ -32,7 +49,7 @@ cat ~/.kimi-code/config.toml | grep maru-plan
 
 ---
 
-## Method B: Project-Local (npx)
+## Method C: Project-Local (npx)
 
 No global install needed. Adds maru-plan only to the current project.
 
@@ -48,12 +65,12 @@ Kimi Code auto-discovers project-level skills when working in this directory.
 
 ---
 
-## Method C: Kimi Code Plugin
+## Method D: Kimi Code Plugin
 
 Install directly through Kimi Code's plugin system.
 
 ```bash
-kimi plugin install https://github.com/user/kimicode-maru-plan.git
+kimi plugin install https://github.com/claudianus/kimicode-maru-plan.git
 ```
 
 Or from a local path:
@@ -105,7 +122,7 @@ export PATH="$(npm bin -g):$PATH"
 ### Plugin install fails
 
 - Git must be installed for `kimi plugin install <git-url>`
-- Use Method A (npm) as fallback
+- Use Method B (npm) as fallback
 
 ### Uninstall cleanly
 
