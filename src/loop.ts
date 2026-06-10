@@ -1,7 +1,14 @@
-import type { Seed, LoopOptions, Plan, PlanVerdict } from './types.js';
+import type { Seed, LoopOptions, Plan, PlanVerdict, InterviewQA, ResearchItem } from './types.js';
 import { generatePlan } from './planner.js';
 import { evaluatePlan } from './plan-evaluator.js';
 import { refinePlan } from './plan-refiner.js';
+import { generateQuestions } from './interviewer.js';
+import { conductResearch } from './researcher.js';
+
+function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
+  const seen = new Set(existing.map((x) => x.id));
+  return [...existing, ...incoming.filter((x) => !seen.has(x.id))];
+}
 
 /**
  * Run the planning harness loop.
@@ -27,10 +34,6 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
       const verdict: PlanVerdict = await evaluatePlan(plan, seed);
 
       console.log(`   Score: ${verdict.score.toFixed(2)}`);
-      console.log(`   Ambiguity: ${verdict.ambiguity.toFixed(2)}`);
-      console.log(`   Completeness: ${verdict.completeness.toFixed(2)}`);
-      console.log(`   Feasibility: ${verdict.feasibility.toFixed(2)}`);
-      console.log(`   Goal alignment: ${verdict.goalAlignment.toFixed(2)}`);
 
       if (verdict.score > bestScore) {
         bestScore = verdict.score;
@@ -45,8 +48,21 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
 
       console.log(`   Feedback: ${verdict.feedback.slice(0, 200)}${verdict.feedback.length > 200 ? '...' : ''}`);
 
+      if (verdict.missingQuestions.length > 0) {
+        const newQuestions = generateQuestions(seed, plan);
+        plan.interviews = mergeById(plan.interviews, newQuestions);
+        console.log(`   Questions: +${newQuestions.length} (total ${plan.interviews.length})`);
+      }
+
       const evolution = await refinePlan(plan, verdict);
       plan = evolution.updatedPlan;
+
+      const researchQueries = [...verdict.missingResearch, ...evolution.researchQueries];
+      if (researchQueries.length > 0) {
+        const newResearch = await conductResearch(researchQueries);
+        plan.research = mergeById(plan.research, newResearch);
+        console.log(`   Research: +${newResearch.length} (total ${plan.research.length})`);
+      }
     } catch (err) {
       console.error(`   Generation ${i} failed:`, err);
     }
