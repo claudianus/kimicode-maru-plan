@@ -1,17 +1,16 @@
-import type { ResearchItem } from "./types.js";
+import type { ResearchItem } from './types.js';
+import YAML from 'yaml';
 
 /**
- * Conduct research by running the provided queries.
+ * Conduct research by generating stub ResearchItems for each query.
  *
- * Currently returns stub results. Each query becomes a ResearchItem
- * with a placeholder summary.
+ * @param queries - Research topics or search queries.
+ * @returns Array of stub ResearchItems.
  */
-export async function conductResearch(
-	queries: string[],
-): Promise<ResearchItem[]> {
-	return queries.map((query, index) => ({
-		id: `r-${index + 1}`,
-		query,
-		summary: `Research stub for: ${query}`,
-	}));
+export async function conductResearch(queries: string[]): Promise<ResearchItem[]> {
+  return queries.map((query, index) => ({
+    id: `r-${index + 1}`,
+    query,
+    summary: `Research stub for: ${query}`,
+  }));
 }

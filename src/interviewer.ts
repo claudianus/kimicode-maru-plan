@@ -1,62 +1,62 @@
-import type { InterviewQA, Plan, Seed } from "./types.js";
+import type { Seed, Plan, InterviewQA } from './types.js';
 
 /**
- * Generate clarifying interview questions based on seed and plan quality.
+ * Generate interview questions based on the seed and current plan.
+ * Identifies ambiguities, missing constraints, vague steps, and missing effort estimates.
  *
- * Rule-based checks:
- * - Goal too short → ask for elaboration
- * - No steps → ask for first actions
- * - No constraints → ask for constraints
- * - Vague step descriptions → ask for clarification
- * - Missing effort estimates → ask for estimates
+ * @param seed - The original user seed.
+ * @param plan - The current plan iteration.
+ * @returns Array of InterviewQA items with ids like q-1, q-2.
  */
 export function generateQuestions(seed: Seed, plan: Plan): InterviewQA[] {
-	const questions: InterviewQA[] = [];
-	let nextId = 1;
+  const questions: InterviewQA[] = [];
+  let qIndex = 1;
 
-	const add = (question: string, reason: string) => {
-		questions.push({
-			id: `q-${nextId++}`,
-			question,
-			reason,
-		});
-	};
+  const addQuestion = (question: string, reason: string) => {
+    questions.push({
+      id: `q-${qIndex++}`,
+      question,
+      reason,
+    });
+  };
 
-	if (seed.goal.length < 30) {
-		add(
-			"Could you elaborate more on the goal? A single sentence is too vague to build a reliable plan.",
-			"Goal is too short (< 30 chars) to derive actionable steps.",
-		);
-	}
+  if (seed.goal.length < 30) {
+    addQuestion(
+      'The goal seems quite short. Could you elaborate on what you are trying to achieve?',
+      'A short goal may hide ambiguity and make alignment difficult.'
+    );
+  }
 
-	if (plan.steps.length === 0) {
-		add(
-			"What are the first concrete actions you would like to take toward this goal?",
-			"Plan has no steps defined.",
-		);
-	}
+  if (seed.constraints.length === 0) {
+    addQuestion(
+      'No constraints have been defined. Are there any hard constraints this plan must respect?',
+      'Constraints prevent scope creep and guide the planner.'
+    );
+  }
 
-	if (seed.constraints.length === 0) {
-		add(
-			"Are there any constraints (time, budget, technology, team size) we should respect?",
-			"No constraints provided; constraints prevent plan drift.",
-		);
-	}
+  if (plan.steps.length === 0) {
+    addQuestion(
+      'The plan has no steps yet. What are the first actions you would like to take?',
+      'A plan without steps is not actionable.'
+    );
+  } else {
+    const vagueSteps = plan.steps.filter((step) => step.description.length < 10);
+    if (vagueSteps.length > 0) {
+      const stepNames = vagueSteps.map((s) => `"${s.description}"`).join(', ');
+      addQuestion(
+        `The following step(s) are vague: ${stepNames}. Could you clarify what each involves?`,
+        'Vague step descriptions make execution and verification difficult.'
+      );
+    }
 
-	for (const step of plan.steps) {
-		if (step.description.length < 10) {
-			add(
-				`Step "${step.id}" description is too vague. Could you clarify what exactly needs to be done?`,
-				`Step description is too short (< 10 chars): "${step.description}"`,
-			);
-		}
-		if (!step.estimatedEffort) {
-			add(
-				`What is the estimated effort for step "${step.id}" (e.g., "2h", "1 day")?`,
-				"Missing estimatedEffort prevents scheduling and feasibility checks.",
-			);
-		}
-	}
+    const missingEffort = plan.steps.some((step) => !step.estimatedEffort);
+    if (missingEffort) {
+      addQuestion(
+        'Some steps are missing effort estimates. Could you provide rough effort estimates for each step?',
+        'Effort estimates help with scheduling and feasibility checks.'
+      );
+    }
+  }
 
-	return questions;
+  return questions;
 }
