@@ -27,6 +27,8 @@ import { conductResearch } from './researcher.js';
 import { evaluateAsDeveloper, evaluateAsPM, evaluateAsSecurity, evaluateAsUX, aggregateVerdicts } from './evaluators/index.js';
 import { createMemoryArchive, recordGeneration, detectDrift } from './memory.js';
 import { runMetaEvolution } from './meta/index.js';
+import { detectStagnation, generateAlternatives, createBranch } from './exploration/index.js';
+import type { Branch } from './exploration/index.js';
 
 function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
   const seen = new Set(existing.map((x) => x.id));
@@ -54,6 +56,9 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   let bestScore = -1;
 
   const archive = createMemoryArchive(seed);
+  const scoreHistory: number[] = [];
+  const branches: Branch[] = [];
+  const recordedGenerations = new Set<number>();
 
   let prevPlan: Plan | null = null;
   let prevVerdict: ConsensusVerdict | null = null;
@@ -83,6 +88,8 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         console.log(`   Disagreements: ${verdict.disagreements.join('; ')}`);
       }
 
+      scoreHistory.push(verdict.score);
+
       if (verdict.score > bestScore) {
         bestScore = verdict.score;
         bestPlan = plan;
@@ -108,7 +115,7 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         if (goalAlignmentDelta > 0) improvements.push(`Goal alignment improved by ${goalAlignmentDelta.toFixed(2)} (${prevVerdict.goalAlignment.toFixed(2)} → ${verdict.goalAlignment.toFixed(2)})`);
       }
 
-      if (prevVerdict && prevPlan) {
+      if (prevVerdict && prevPlan && !recordedGenerations.has(i - 1)) {
         recordGeneration(archive, i - 1, prevPlan, prevVerdict, prevStrategies, [prevVerdict.feedback], prevImprovements, prevDiscarded);
       }
 
@@ -125,6 +132,18 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
       if (drift > 0.3) {
         console.warn(`   ⚠️ Goal drift detected: ${drift.toFixed(2)} (threshold 0.3)`);
         verdict.feedback += ` [DRIFT ALERT] Plan goal diverged from seed goal (drift=${drift.toFixed(2)}). Re-align with seed.goal="${seed.goal}".`;
+      }
+
+      if (detectStagnation(scoreHistory)) {
+        console.log(`━━━━━━━━━━━━━━━ Stagnation Detected ━━━━━━━━━━━━━━━`);
+        const alternatives = generateAlternatives(seed, plan);
+        for (const alt of alternatives) {
+          console.log(`   • ${alt}`);
+        }
+        console.log(`Kimi Code should present these alternatives to the user via AskUserQuestion.`);
+        branches.push(createBranch(plan, 'stagnation-fallback', verdict.score));
+        recordGeneration(archive, i, plan, verdict, ['stagnation'], [verdict.feedback], [], []);
+        recordedGenerations.add(i);
       }
 
       if (verdict.missingQuestions.length > 0) {
@@ -160,6 +179,11 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
       const evolution = await refinePlan(plan, verdict, archive);
 
       const { strategiesAttempted, discardedIdeas } = diffPlans(plan, evolution.updatedPlan);
+
+      if (strategiesAttempted.length >= 3) {
+        branches.push(createBranch(evolution.updatedPlan, 'strategy-shift', verdict.score));
+      }
+
       prevPlan = plan;
       prevVerdict = verdict;
       prevScore = verdict.score;
@@ -173,7 +197,7 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
     }
   }
 
-  if (prevVerdict && prevPlan) {
+  if (prevVerdict && prevPlan && !recordedGenerations.has(maxGenerations)) {
     recordGeneration(archive, maxGenerations, prevPlan, prevVerdict, prevStrategies, [prevVerdict.feedback], prevImprovements, prevDiscarded);
   }
 
