@@ -7,6 +7,8 @@ export interface ExecutorOptions {
   cwd: string;
   /** If provided, writes changes to disk and runs tests. */
   applyChanges?: boolean;
+  /** If set, writes changes to this path instead of cwd. */
+  worktreePath?: string;
 }
 
 /**
@@ -39,7 +41,8 @@ export async function executeGeneration(
 
   if (options?.applyChanges && generation.codeChanges.length > 0) {
     for (const change of generation.codeChanges) {
-      const fullPath = join(options.cwd, change.path);
+      const basePath = options.worktreePath ?? options.cwd;
+      const fullPath = join(basePath, change.path);
       if (change.operation === 'delete') {
         if (existsSync(fullPath)) rmSync(fullPath);
       } else {
