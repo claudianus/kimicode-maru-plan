@@ -103,4 +103,6 @@ export interface LoopOptions {
   maxGenerations?: number;
   /** If true, stop immediately on first passing generation. */
   stopOnPass?: boolean;
+  /** If true (default), use a git worktree per generation. */
+  useWorktree?: boolean;
 }
