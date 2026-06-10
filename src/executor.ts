@@ -41,6 +41,9 @@ export async function executeGeneration(
 
   if (options?.applyChanges && generation.codeChanges.length > 0) {
     for (const change of generation.codeChanges) {
+        if (change.path.includes('..') || change.path.startsWith('/') || change.path.includes('\0')) {
+          throw new Error(`Invalid code change path: ${change.path}`);
+        }
       const basePath = options.worktreePath ?? options.cwd;
       const fullPath = join(basePath, change.path);
       if (change.operation === 'delete') {
