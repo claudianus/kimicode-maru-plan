@@ -29,6 +29,7 @@ import { createMemoryArchive, recordGeneration, detectDrift } from './memory.js'
 import { runMetaEvolution } from './meta/index.js';
 import { detectStagnation, generateAlternatives, createBranch } from './exploration/index.js';
 import type { Branch } from './exploration/index.js';
+import { runPreGenerationGate, runPostEvaluationGate, runConsensusGate } from './gates.js';
 
 function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
   const seen = new Set(existing.map((x) => x.id));
@@ -50,6 +51,16 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   console.log(`   Goal: ${seed.goal}`);
   console.log(`   Max generations: ${maxGenerations}`);
   console.log(`   CWD: ${options.cwd}`);
+
+  const preGate = runPreGenerationGate(seed);
+  if (!preGate.passed) {
+    console.error(`❌ Gate Failed: ${preGate.gateName}`);
+    console.error(`Violations:`);
+    for (const v of preGate.violations) {
+      console.error(`  - ${v}`);
+    }
+    process.exit(1);
+  }
 
   let plan: Plan = await generatePlan(seed, [], []);
   let bestPlan: Plan = plan;
@@ -79,6 +90,21 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         evaluateAsUX(plan, seed),
       ]);
       const verdict: ConsensusVerdict = aggregateVerdicts(personaVerdicts, baseVerdict);
+
+      const postGate = runPostEvaluationGate(plan, seed);
+      const consensusGate = runConsensusGate(verdict.personaVerdicts);
+      const allGates = [postGate, consensusGate];
+      for (const gate of allGates) {
+        if (!gate.passed) {
+          console.error(`❌ Gate Failed: ${gate.gateName}`);
+          console.error(`Violations:`);
+          for (const v of gate.violations) {
+            console.error(`  - ${v}`);
+          }
+          verdict.passed = false;
+          verdict.feedback += `\n[${gate.gateName} Gate Violations]\n${gate.violations.map(v => `- ${v}`).join('\n')}`;
+        }
+      }
 
       console.log(`   Consensus: ${verdict.score.toFixed(2)}`);
       for (const pv of verdict.personaVerdicts) {
