@@ -127,3 +127,51 @@ export interface LoopOptions {
   /** If true, stop immediately on first passing plan. */
   stopOnPass?: boolean;
 }
+
+// ───────────────────────────────────────────────
+// Multi-Persona Evaluation (Phase 1)
+// ───────────────────────────────────────────────
+
+export type PersonaId = 'developer' | 'pm' | 'security' | 'ux';
+
+export interface PersonaVerdict {
+  persona: PersonaId;
+  passed: boolean;
+  /** 0.0–1.0 composite score (persona-weighted). */
+  score: number;
+  ambiguity: number;
+  completeness: number;
+  feasibility: number;
+  goalAlignment: number;
+  feedback: string;
+  /** Issues that this persona considers blockers. */
+  blockingIssues: string[];
+}
+
+export interface ConsensusVerdict extends PlanVerdict {
+  personaVerdicts: PersonaVerdict[];
+  /** Synthesized feedback explaining how consensus was reached. */
+  consensusFeedback: string;
+  /** List of dimension/persona disagreements that need resolution. */
+  disagreements: string[];
+}
+
+// ───────────────────────────────────────────────
+// Generational Memory (Phase 2)
+// ───────────────────────────────────────────────
+
+export interface GenerationMemory {
+  generation: number;
+  planSnapshot: Plan;
+  verdict: ConsensusVerdict;
+  strategiesAttempted: string[];
+  failures: string[];
+  improvements: string[];
+  discardedIdeas: string[];
+}
+
+export interface MemoryArchive {
+  seed: Seed;
+  memories: GenerationMemory[];
+  summary: string;
+}
