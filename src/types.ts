@@ -175,3 +175,13 @@ export interface MemoryArchive {
   memories: GenerationMemory[];
   summary: string;
 }
+
+// ───────────────────────────────────────────────
+// Meta-Evolution (Phase 3)
+// ───────────────────────────────────────────────
+
+export interface MetaEvolution {
+  rubricSuggestions: string[];
+  promptSuggestions: string[];
+  strategyShift: string;
+}

@@ -26,6 +26,7 @@ import { generateQuestions } from './interviewer.js';
 import { conductResearch } from './researcher.js';
 import { evaluateAsDeveloper, evaluateAsPM, evaluateAsSecurity, evaluateAsUX, aggregateVerdicts } from './evaluators/index.js';
 import { createMemoryArchive, recordGeneration, detectDrift } from './memory.js';
+import { runMetaEvolution } from './meta/index.js';
 
 function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
   const seen = new Set(existing.map((x) => x.id));
@@ -136,6 +137,24 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
         const newResearch = await conductResearch(verdict.missingResearch);
         plan.research = mergeById(plan.research, newResearch);
         console.log(`   Research: +${newResearch.length} (total ${plan.research.length})`);
+      }
+
+      if (i % 3 === 0 && i > 0) {
+        const meta = runMetaEvolution(archive);
+        console.log(`\n━━━━━━━━━━━━━━━ Meta-Evolution ━━━━━━━━━━━━━━━`);
+        console.log(`Strategy shift: ${meta.strategyShift}`);
+        if (meta.rubricSuggestions.length > 0) {
+          console.log(`Rubric suggestions:`);
+          for (const s of meta.rubricSuggestions) {
+            console.log(`  - ${s}`);
+          }
+        }
+        if (meta.promptSuggestions.length > 0) {
+          console.log(`Prompt suggestions:`);
+          for (const s of meta.promptSuggestions) {
+            console.log(`  - ${s}`);
+          }
+        }
       }
 
       const evolution = await refinePlan(plan, verdict, archive);
