@@ -25,7 +25,7 @@ import { refinePlan } from './plan-refiner.js';
 import { generateQuestions } from './interviewer.js';
 import { conductResearch } from './researcher.js';
 import { evaluateAsDeveloper, evaluateAsPM, evaluateAsSecurity, evaluateAsUX, aggregateVerdicts } from './evaluators/index.js';
-import { createMemoryArchive, recordGeneration, detectDrift } from './memory.js';
+import { createMemoryArchive, recordGeneration, detectDrift, saveArchive, loadArchive } from './memory.js';
 import { runMetaEvolution } from './meta/index.js';
 import { detectStagnation, generateAlternatives, createBranch } from './exploration/index.js';
 import type { Branch } from './exploration/index.js';
@@ -66,7 +66,12 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   let bestPlan: Plan = plan;
   let bestScore = -1;
 
-  const archive = createMemoryArchive(seed);
+  let archive = loadArchive(seed);
+  if (archive) {
+    console.log(`   📚 Loaded archive with ${archive.memories.length} previous generations`);
+  } else {
+    archive = createMemoryArchive(seed);
+  }
   const scoreHistory: number[] = [];
   const branches: Branch[] = [];
   const recordedGenerations = new Set<number>();
@@ -148,6 +153,8 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
       const passed = options.stopOnPass !== false ? verdict.passed : verdict.score >= 0.85;
       if (passed) {
         console.log(`\n✅ Plan passed at generation ${i} (score ${verdict.score.toFixed(2)})!`);
+        recordGeneration(archive, i, plan, verdict, prevStrategies, [verdict.feedback], prevImprovements, prevDiscarded);
+        saveArchive(archive);
         printPlan(plan);
         return plan;
       }
@@ -226,6 +233,7 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<Plan> {
   if (prevVerdict && prevPlan && !recordedGenerations.has(maxGenerations)) {
     recordGeneration(archive, maxGenerations, prevPlan, prevVerdict, prevStrategies, [prevVerdict.feedback], prevImprovements, prevDiscarded);
   }
+  saveArchive(archive);
 
   console.log(`\n❌ Max generations (${maxGenerations}) reached without passing.`);
   console.log(`   Best score: ${bestScore.toFixed(2)}`);

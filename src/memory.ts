@@ -1,4 +1,42 @@
 import type { Seed, Plan, ConsensusVerdict, GenerationMemory, MemoryArchive } from './types.js';
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+
+const MEMORY_DIR = join(homedir(), '.kimi-code', 'maru-plan-memory');
+
+function hashGoal(goal: string): string {
+  let hash = 0;
+  for (let i = 0; i < goal.length; i++) {
+    const char = goal.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+export function getArchivePath(goal: string): string {
+  return join(MEMORY_DIR, `archive-${hashGoal(goal)}.json`);
+}
+
+export function saveArchive(archive: MemoryArchive): void {
+  mkdirSync(MEMORY_DIR, { recursive: true });
+  const path = getArchivePath(archive.seed.goal);
+  writeFileSync(path, JSON.stringify(archive, null, 2));
+}
+
+export function loadArchive(seed: Seed): MemoryArchive | null {
+  const path = getArchivePath(seed.goal);
+  if (!existsSync(path)) return null;
+  try {
+    const raw = readFileSync(path, 'utf-8');
+    const parsed = JSON.parse(raw) as MemoryArchive;
+    if (!parsed.seed || !Array.isArray(parsed.memories)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 export function createMemoryArchive(seed: Seed): MemoryArchive {
   return { seed, memories: [], summary: '' };
