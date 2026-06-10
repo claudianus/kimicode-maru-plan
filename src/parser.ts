@@ -12,17 +12,13 @@ export function parseSeed(path: string): Seed {
   if (!Array.isArray(parsed.constraints)) {
     throw new Error('Seed must have a "constraints" array');
   }
-  if (!Array.isArray(parsed.acceptanceCriteria) || parsed.acceptanceCriteria.length === 0) {
-    throw new Error('Seed must have at least one acceptance criterion');
-  }
 
   const seed: Seed = {
     goal: parsed.goal,
     constraints: parsed.constraints,
-    acceptanceCriteria: parsed.acceptanceCriteria,
     nonGoals: parsed.nonGoals,
     maxGenerations: parsed.maxGenerations ?? 5,
-    ethicalConstraints: parsed.ethicalConstraints,
+    context: parsed.context,
   };
 
   return seed;

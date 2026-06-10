@@ -2,7 +2,6 @@ import type { Seed, LoopOptions } from './types.js';
 import { executeGeneration } from './executor.js';
 import { evaluateGeneration } from './evaluator.js';
 import { evolveSeed } from './evolver.js';
-import { createWorktree, removeWorktree } from './worktree.js';
 
 /**
  * Run the Ouroboros-inspired evolutionary loop.
@@ -23,22 +22,13 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<void> {
   for (let i = 1; i <= maxGenerations; i++) {
     console.log(`\n━━━━━━━━━━━━━━━ Generation ${i}/${maxGenerations} ━━━━━━━━━━━━━━━`);
 
-    const useWorktree = options.useWorktree !== false;
-    const worktreeName = `kimi-harness-gen-${i}-${Date.now()}`;
-    let worktreePath: string | undefined;
-
     try {
-      if (useWorktree) {
-        worktreePath = createWorktree(options.cwd, worktreeName);
-      }
-
       const generation = await executeGeneration(currentSeed, i, previousFeedback, {
         cwd: options.cwd,
         applyChanges: true,
-        worktreePath,
       });
 
-      const verdict = await evaluateGeneration(generation, currentSeed, { cwd: options.cwd, worktreePath });
+      const verdict = await evaluateGeneration(generation, currentSeed, { cwd: options.cwd });
       generation.verdict = verdict;
       lastVerdict = verdict;
 
@@ -58,10 +48,8 @@ export async function runLoop(seed: Seed, options: LoopOptions): Promise<void> {
       previousFeedback = evolution.prompt;
 
       console.log(`   Feedback: ${verdict.feedback.slice(0, 200)}${verdict.feedback.length > 200 ? '...' : ''}`);
-    } finally {
-      if (worktreePath) {
-        removeWorktree(options.cwd, worktreeName);
-      }
+    } catch (err) {
+      console.error(`   Generation ${i} failed:`, err);
     }
   }
 

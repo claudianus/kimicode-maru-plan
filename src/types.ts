@@ -1,108 +1,129 @@
 /**
- * Core types for kimi-harness.
+ * Core types for kimi-harness — a planner harness for Kimi Code.
  *
- * Inspired by Ouroboros:
- *  - Seed: immutable goal + constraints + acceptance criteria
- *  - Generation: one code-producing attempt
- *  - Verdict: mechanical + semantic evaluation
- *  - Evolve: drift-aware prompt refinement
+ * Purpose: Turn vague user ideas into concrete, actionable plans
+ * through interviews, research, and iterative refinement.
  */
 
+// ───────────────────────────────────────────────
+// Seed: raw user input
+// ───────────────────────────────────────────────
+
 export interface Seed {
-  /** One-sentence mission. Must not change during evolution. */
+  /** One-sentence mission. Immutable during evolution. */
   goal: string;
-  /** Hard constraints that every generation must respect. */
+  /** Hard constraints every plan must respect. */
   constraints: string[];
-  /** Acceptance criteria — mechanical or semantic. */
-  acceptanceCriteria: AcceptanceCriterion[];
   /** Explicitly out-of-scope items. */
   nonGoals?: string[];
   /** Max evolutionary generations before giving up. */
   maxGenerations?: number;
-  /** Ethical guardrails applied to every generation. */
-  ethicalConstraints?: string[];
+  /** Additional context the user provided. */
+  context?: string;
 }
 
-export interface AcceptanceCriterion {
+// ───────────────────────────────────────────────
+// Interview: clarify vague requirements
+// ───────────────────────────────────────────────
+
+export interface InterviewQA {
+  id: string;
+  /** The question to ask the user. */
+  question: string;
+  /** User's answer (undefined until answered). */
+  answer?: string;
+  /** Why this question is necessary. */
+  reason: string;
+}
+
+// ───────────────────────────────────────────────
+// Research: external investigation
+// ───────────────────────────────────────────────
+
+export interface ResearchItem {
+  id: string;
+  /** Search query or research topic. */
+  query: string;
+  /** Summary of findings. */
+  summary: string;
+  /** Optional source URL or reference. */
+  source?: string;
+}
+
+// ───────────────────────────────────────────────
+// Plan: concrete execution plan
+// ───────────────────────────────────────────────
+
+export interface PlanStep {
   id: string;
   description: string;
-  /** How to verify this AC. */
-  verificationMethod: 'test' | 'lint' | 'build' | 'manual' | 'semantic';
+  /** Step IDs that must complete before this one. */
+  dependsOn?: string[];
+  /** Rough effort estimate (e.g. "2h", "1 day"). */
+  estimatedEffort?: string;
+  /** How to verify this step is complete. */
+  verificationMethod?: string;
 }
 
-export interface Generation {
+export interface Plan {
   id: string;
-  generationNumber: number;
-  /** Files changed in this generation. */
-  codeChanges: CodeChange[];
-  /** Optional test execution results. */
-  testResults?: TestResult[];
-  /** Evaluation result, populated after evaluate(). */
-  verdict?: Verdict;
+  version: number;
+  goal: string;
+  steps: PlanStep[];
+  /** Assumptions the plan relies on. */
+  assumptions: string[];
+  /** Identified risks and mitigations. */
+  risks: string[];
+  /** Interviews conducted so far. */
+  interviews: InterviewQA[];
+  /** Research conducted so far. */
+  research: ResearchItem[];
 }
 
-export interface CodeChange {
-  path: string;
-  content: string;
-  operation: 'create' | 'update' | 'delete';
-}
+// ───────────────────────────────────────────────
+// Verdict: evaluate plan quality
+// ───────────────────────────────────────────────
 
-export interface TestResult {
-  passed: boolean;
-  command: string;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  durationMs: number;
-}
-
-export interface Verdict {
+export interface PlanVerdict {
   passed: boolean;
   /** 0.0–1.0 composite score. */
   score: number;
-  mechanical: MechanicalResult;
-  semantic: SemanticResult;
-  /** Actionable feedback for the next generation. */
-  feedback: string;
-}
-
-export interface MechanicalResult {
-  buildPassed: boolean;
-  testsPassed: boolean;
-  lintPassed: boolean;
-  /** Per-AC test results. */
-  acResults: AcResult[];
-}
-
-export interface AcResult {
-  acId: string;
-  passed: boolean;
-  detail: string;
-}
-
-export interface SemanticResult {
-  /** 0.0–1.0 how well the generation aligns with seed.goal. */
+  /** 0 = crystal clear, 1 = completely vague. */
+  ambiguity: number;
+  /** 0 = missing critical pieces, 1 = fully specified. */
+  completeness: number;
+  /** 0 = impossible, 1 = trivially executable. */
+  feasibility: number;
+  /** 0 = off-track, 1 = perfectly aligned with seed.goal. */
   goalAlignment: number;
-  /** 0.0–1.0 constraint compliance. */
-  constraintCompliance: number;
-  /** 0.0–1.0 0 = no drift, 1 = completely off-track. */
-  driftScore: number;
-  /** Summary of semantic evaluation. */
-  summary: string;
+  /** Actionable feedback for the next iteration. */
+  feedback: string;
+  /** Additional questions to ask the user. */
+  missingQuestions: string[];
+  /** Additional research topics to investigate. */
+  missingResearch: string[];
 }
 
-export interface Evolution {
-  /** Refined seed (may add derived constraints). */
-  updatedSeed: Seed;
-  /** Prompt to feed into the next generation. */
-  prompt: string;
+// ───────────────────────────────────────────────
+// Evolution: refine plan based on verdict
+// ───────────────────────────────────────────────
+
+export interface PlanEvolution {
+  /** Refined plan. */
+  updatedPlan: Plan;
+  /** New interview questions to ask. */
+  interviewQuestions: string[];
+  /** New research queries to run. */
+  researchQueries: string[];
 }
+
+// ───────────────────────────────────────────────
+// Loop options
+// ───────────────────────────────────────────────
 
 export interface LoopOptions {
   cwd: string;
   maxGenerations?: number;
-  /** If true, stop immediately on first passing generation. */
+  /** If true, stop immediately on first passing plan. */
   stopOnPass?: boolean;
-  /** If true, use a git worktree per generation. */
-  useWorktree?: boolean;
 }
