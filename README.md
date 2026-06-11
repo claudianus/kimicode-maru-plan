@@ -36,7 +36,8 @@ npx kimicode-maru-plan init
 kimi plugin install https://github.com/claudianus/kimicode-maru-plan.git
 ```
 
-> See [INSTALL.md](docs/INSTALL.md) for detailed steps and troubleshooting.
+> See [INSTALL.md](docs/INSTALL.md) for detailed steps and troubleshooting.  
+> See [EXECUTION.md](docs/EXECUTION.md) for connecting plans to actual work.
 
 ---
 
